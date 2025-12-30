@@ -1,0 +1,50 @@
+# Git
+.git/
+.gitignore
+
+# Documentation
+README.md
+CHANGELOG.md
+CONTRIBUTING.md
+docs/
+specs/
+examples/
+
+# Build artifacts
+bin/
+dist/
+build/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test files
+*_test.go
+testdata/
+tests/
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Go workspace
+go.work
+go.work.sum
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Environment files
+.env*
+
+# Temporary files
+tmp/
+temp/
+*.tmp
