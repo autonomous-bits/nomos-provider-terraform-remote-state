@@ -77,36 +77,36 @@ description: "Task list for Terraform Remote State Provider implementation"
 
 #### Local Backend (Root Outputs) - TDD Pattern
 
-- [ ] [I3] [P] [US1] Define LocalBackendConfig struct in internal/backend/local.go with Type, Path, Workspace fields
-- [ ] [I4] [P] [US1] Define AzureBackendConfig struct in internal/backend/azurerm.go with Type, StorageAccountName, ContainerName, Key, ResourceGroupName fields
-- [ ] [T2] [P] [US1] Create LocalBackend unit tests in internal/backend/local_test.go with test cases for valid state file, file not found, permission denied, workspace path resolution
-- [ ] [I5] [US1] Implement LocalBackend struct in internal/backend/local.go with FetchState method reading file from filesystem with context propagation
-- [ ] [I6] [US1] Add workspace path resolution logic in internal/backend/local.go for default workspace (use path as-is) and named workspaces (construct terraform.tfstate.d/<workspace>/<filename>)
-- [ ] [I7] [US1] Add file validation in LocalBackend constructor checking file exists and is readable, return FailedPrecondition if not found, PermissionDenied if not readable
+- [X] [I3] [P] [US1] Define LocalBackendConfig struct in internal/backend/local.go with Type, Path, Workspace fields
+- [X] [I4] [P] [US1] Define AzureBackendConfig struct in internal/backend/azurerm.go with Type, StorageAccountName, ContainerName, Key, ResourceGroupName fields
+- [X] [T2] [P] [US1] Create LocalBackend unit tests in internal/backend/local_test.go with test cases for valid state file, file not found, permission denied, workspace path resolution
+- [X] [I5] [US1] Implement LocalBackend struct in internal/backend/local.go with FetchState method reading file from filesystem with context propagation
+- [X] [I6] [US1] Add workspace path resolution logic in internal/backend/local.go for default workspace (use path as-is) and named workspaces (construct terraform.tfstate.d/<workspace>/<filename>)
+- [X] [I7] [US1] Add file validation in LocalBackend constructor checking file exists and is readable, return FailedPrecondition if not found, PermissionDenied if not readable
 
 #### Azure Backend (Root Outputs) - TDD Pattern
 
-- [ ] [T3] [P] [US1] Create AzureBackend unit tests in internal/backend/azurerm_test.go with test cases for valid config, invalid storage account name, invalid container name, empty key (use mocks for Azure SDK)
-- [ ] [I8] [US1] Implement AzureBackend struct in internal/backend/azurerm.go with azblob.Client, config fields, and FetchState method
-- [ ] [I9] [US1] Add Azure authentication in AzureBackend constructor using azidentity.NewDefaultAzureCredential reading AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET from environment
-- [ ] [I10] [US1] Implement blob download in AzureBackend.FetchState using DownloadStream, return NotFound for 404, PermissionDenied for 403, Unavailable for network errors
-- [ ] [I11] [US1] Add config validation in AzureBackend constructor for storage_account_name (3-24 chars, lowercase alphanumeric), container_name (3-63 chars, lowercase alphanumeric + hyphens), key (non-empty)
-- [ ] [I11a] [US1] Add Azure authentication error handling in AzureBackend.FetchState returning PermissionDenied gRPC code for auth failures (missing credentials, invalid credentials, expired tokens) with clear error messages
+- [X] [T3] [P] [US1] Create AzureBackend unit tests in internal/backend/azurerm_test.go with test cases for valid config, invalid storage account name, invalid container name, empty key (use mocks for Azure SDK)
+- [X] [I8] [US1] Implement AzureBackend struct in internal/backend/azurerm.go with azblob.Client, config fields, and FetchState method
+- [X] [I9] [US1] Add Azure authentication in AzureBackend constructor using azidentity.NewDefaultAzureCredential reading AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET from environment
+- [X] [I10] [US1] Implement blob download in AzureBackend.FetchState using DownloadStream, return NotFound for 404, PermissionDenied for 403, Unavailable for network errors
+- [X] [I11] [US1] Add config validation in AzureBackend constructor for storage_account_name (3-24 chars, lowercase alphanumeric), container_name (3-63 chars, lowercase alphanumeric + hyphens), key (non-empty)
+- [X] [I11a] [US1] Add Azure authentication error handling in AzureBackend.FetchState returning PermissionDenied gRPC code for auth failures (missing credentials, invalid credentials, expired tokens) with clear error messages
 
 #### gRPC Contract Implementation
 
-- [ ] [G6] [US1] Implement Init RPC in internal/provider/provider.go parsing config.type, creating LocalBackend or AzureBackend, validating already initialized, storing alias and backend
-- [ ] [G7] [US1] Add backend factory logic in Init RPC switching on type field, return InvalidArgument for unsupported types, return backend construction errors with appropriate gRPC codes
-- [ ] [G8] [US1] Implement Fetch RPC in internal/provider/provider.go validating initialized state, validating path non-empty, calling backend.FetchState, parsing state with state.ParseStateFile
-- [ ] [G9] [US1] Add output resolution in Fetch RPC looking up path[0] in state.Outputs, return NotFound if output doesn't exist with clear message including output name
-- [ ] [G10] [US1] Add value conversion in Fetch RPC using structpb.NewValue to convert output.Value to protobuf Struct, handle conversion errors as Internal
-- [ ] [I12] [US1] Add state version validation in ParseStateFile checking version >= 4, return FailedPrecondition with clear message for versions < 4
+- [X] [G6] [US1] Implement Init RPC in internal/provider/provider.go parsing config.type, creating LocalBackend or AzureBackend, validating already initialized, storing alias and backend
+- [X] [G7] [US1] Add backend factory logic in Init RPC switching on type field, return InvalidArgument for unsupported types, return backend construction errors with appropriate gRPC codes
+- [X] [G8] [US1] Implement Fetch RPC in internal/provider/provider.go validating initialized state, validating path non-empty, calling backend.FetchState, parsing state with state.ParseStateFile
+- [X] [G9] [US1] Add output resolution in Fetch RPC looking up path[0] in state.Outputs, return NotFound if output doesn't exist with clear message including output name
+- [X] [G10] [US1] Add value conversion in Fetch RPC using structpb.NewValue to convert output.Value to protobuf Struct, handle conversion errors as Internal
+- [X] [I12] [US1] Add state version validation in ParseStateFile checking version >= 4, return FailedPrecondition with clear message for versions < 4
 
 #### Error Handling
 
-- [ ] [I13] [P] [US1] Add comprehensive error handling in internal/provider/provider.go for all gRPC codes: FailedPrecondition, InvalidArgument, NotFound, PermissionDenied, Unavailable, DeadlineExceeded, Canceled, Internal
-- [ ] [I14] [P] [US1] Add context cancellation checks in backend FetchState methods before I/O operations, return Canceled error if context is done
-- [ ] [T4] [P] [US1] Create error handling tests in internal/provider/provider_test.go for Init called twice, Fetch before Init, empty path, missing output, invalid JSON state
+- [X] [I13] [P] [US1] Add comprehensive error handling in internal/provider/provider.go for all gRPC codes: FailedPrecondition, InvalidArgument, NotFound, PermissionDenied, Unavailable, DeadlineExceeded, Canceled, Internal
+- [X] [I14] [P] [US1] Add context cancellation checks in backend FetchState methods before I/O operations, return Canceled error if context is done
+- [X] [T4] [P] [US1] Create error handling tests in internal/provider/provider_test.go for Init called twice, Fetch before Init, empty path, missing output, invalid JSON state
 
 #### Integration Tests
 
@@ -117,9 +117,9 @@ description: "Task list for Terraform Remote State Provider implementation"
 - [ ] [T9] [US1] Add test case in provider_integration_test.go: test all supported output types (string, number, bool, list, map, object, null)
 - [ ] [T10] [US1] Add test case in provider_integration_test.go: state file not found returns NotFound error
 - [ ] [T11] [US1] Add test case in provider_integration_test.go: output not found returns NotFound error with output name in message
-- [ ] [T15] [P] [US1] Add test cases for corrupted state files in internal/state/parser_test.go testing truncated JSON, invalid structure, partial file content - all should return clear error messages
+- [X] [T15] [P] [US1] Add test cases for corrupted state files in internal/state/parser_test.go testing truncated JSON, invalid structure, partial file content - all should return clear error messages
 
-**Checkpoint**: At this point, User Story 1 should be fully functional - local and Azure backends work, root outputs accessible, all gRPC methods implemented
+**Checkpoint**: At this point, User Story 1 should be fully functional - local and Azure backends work, root outputs accessible, all gRPC methods implemented ✅ **COMPLETE** (Integration tests deferred)
 
 ---
 
