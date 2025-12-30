@@ -1,0 +1,217 @@
+package backend
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"log/slog"
+	"os"
+	"path/filepath"
+
+	"github.com/autonomous-bits/nomos-provider-terraform-remote-state/internal/state"
+)
+
+func init() {
+	Register("local", func(_ context.Context, config map[string]interface{}) (Backend, error) {
+		// Extract path (required)
+		pathValue, ok := config["path"]
+		if !ok {
+			return nil, fmt.Errorf("missing required field: path")
+		}
+		path, ok := pathValue.(string)
+		if !ok {
+			return nil, fmt.Errorf("path must be a string")
+		}
+
+		// Path validation happens in config.ParseConfig, but we double-check here
+		// as defense-in-depth
+		if path == "" {
+			return nil, ErrInvalidPath
+		}
+
+		// Extract workspace (optional, defaults to "default")
+		workspace := defaultWorkspace
+		if workspaceValue, ok := config["workspace"]; ok {
+			if ws, ok := workspaceValue.(string); ok && ws != "" {
+				workspace = ws
+			}
+		}
+
+		return NewLocalBackend(LocalBackendConfig{
+			Path:      path,
+			Workspace: workspace,
+		})
+	})
+}
+
+// Sentinel errors for local backend operations
+var (
+	// ErrStateFileNotFound indicates the state file does not exist at the specified path
+	ErrStateFileNotFound = errors.New("state file not found")
+
+	// ErrInvalidPath indicates the path is invalid or empty
+	ErrInvalidPath = errors.New("path cannot be empty")
+)
+
+const (
+	// defaultWorkspace is the name of the default Terraform workspace
+	defaultWorkspace = "default"
+)
+
+// LocalBackendConfig holds configuration for the local file backend.
+//
+// The local backend reads Terraform state files from the local filesystem.
+// It supports both default workspaces (state file at the exact path) and
+// named workspaces (state file in terraform.tfstate.d/<workspace>/ subdirectory).
+type LocalBackendConfig struct {
+	// Path is the base path to the Terraform state file.
+	// For default workspace, this is the exact path to terraform.tfstate.
+	// For named workspaces, the actual path is derived by inserting
+	// terraform.tfstate.d/<workspace>/ into the path.
+	Path string
+
+	// Workspace is the Terraform workspace name.
+	// "default" or empty string uses the path as-is.
+	// Any other value uses terraform.tfstate.d/<workspace>/terraform.tfstate pattern.
+	Workspace string
+}
+
+// LocalBackend implements the Backend interface for local filesystem state files.
+//
+// LocalBackend reads Terraform state files from the local filesystem and
+// handles workspace path resolution. It supports both default and named workspaces
+// following Terraform's workspace directory structure conventions.
+//
+// The backend performs validation to ensure:
+//   - The state file exists and is readable
+//   - The state file format is valid (version 4+)
+//   - Context cancellation is respected
+type LocalBackend struct {
+	config LocalBackendConfig
+}
+
+// NewLocalBackend creates a new local filesystem backend.
+//
+// Returns ErrInvalidPath if the path is empty.
+// If workspace is empty, it defaults to "default".
+func NewLocalBackend(cfg LocalBackendConfig) (*LocalBackend, error) {
+	if cfg.Path == "" {
+		return nil, ErrInvalidPath
+	}
+
+	// Default to "default" workspace if empty
+	if cfg.Workspace == "" {
+		cfg.Workspace = defaultWorkspace
+	}
+
+	return &LocalBackend{
+		config: cfg,
+	}, nil
+}
+
+// FetchState retrieves the Terraform state file from the local filesystem.
+//
+// For default workspace, reads from the configured path directly.
+// For named workspaces, reads from terraform.tfstate.d/<workspace>/terraform.tfstate.
+//
+// Returns ErrStateFileNotFound if the file doesn't exist.
+// Returns state.ErrUnsupportedVersion if the state version is < 4.
+// Returns context.Canceled if the context is cancelled before reading completes.
+func (b *LocalBackend) FetchState(ctx context.Context) (*state.StateFile, error) {
+	slog.InfoContext(ctx, "fetching state from local backend", "workspace", b.config.Workspace)
+
+	// Check context cancellation before starting
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+	}
+
+	// Resolve the actual file path based on workspace
+	filePath := b.resolveWorkspacePath()
+
+	// Validate workspace path exists
+	if err := b.validateWorkspacePath(filePath); err != nil {
+		return nil, err
+	}
+
+	// Read the state file
+	// #nosec G304 -- file path is validated from configuration
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			slog.ErrorContext(ctx, "state file not found", "workspace", b.config.Workspace, "error", err)
+			return nil, b.formatNotFoundError(filePath)
+		}
+		slog.ErrorContext(ctx, "failed to read state file", "workspace", b.config.Workspace, "error", err)
+		return nil, fmt.Errorf("failed to read state file: %w", err)
+	}
+
+	// Check context cancellation before parsing
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+	}
+
+	// Parse the state file
+	stateFile, err := state.ParseStateFile(data)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to parse state file", "workspace", b.config.Workspace, "error", err)
+		return nil, fmt.Errorf("failed to parse state file: %w", err)
+	}
+
+	slog.InfoContext(ctx, "successfully fetched state from local backend", "workspace", b.config.Workspace, "state_version", stateFile.Version)
+	return stateFile, nil
+}
+
+// resolveWorkspacePath resolves the actual file path based on the workspace.
+//
+// For "default" workspace: returns the path as-is.
+// For named workspaces: inserts terraform.tfstate.d/<workspace>/ into the path.
+//
+// Security: This function assumes workspace name has already been validated
+// by config.ParseConfig to prevent path traversal attacks.
+//
+// Examples:
+//   - default workspace: "/path/to/terraform.tfstate" -> "/path/to/terraform.tfstate"
+//   - production workspace: "/path/to/terraform.tfstate" -> "/path/to/terraform.tfstate.d/production/terraform.tfstate"
+func (b *LocalBackend) resolveWorkspacePath() string {
+	workspace := b.config.Workspace
+	if workspace == "" || workspace == defaultWorkspace {
+		return b.config.Path
+	}
+
+	// For named workspaces, insert terraform.tfstate.d/<workspace>/ into the path
+	// Security: workspace name has been validated to not contain ../ or directory separators
+	dir := filepath.Dir(b.config.Path)
+	filename := filepath.Base(b.config.Path)
+
+	return filepath.Join(dir, "terraform.tfstate.d", workspace, filename)
+}
+
+// validateWorkspacePath validates that the workspace path exists and is accessible.
+//
+// Returns ErrStateFileNotFound with a descriptive message if the path doesn't exist.
+func (b *LocalBackend) validateWorkspacePath(filePath string) error {
+	// Check if the file exists
+	if _, err := os.Stat(filePath); err != nil {
+		if os.IsNotExist(err) {
+			return b.formatNotFoundError(filePath)
+		}
+		return fmt.Errorf("failed to access state file: %w", err)
+	}
+	return nil
+}
+
+// formatNotFoundError creates a descriptive error message for missing state files.
+//
+// The error message includes the workspace name to help users identify which
+// workspace is being accessed and provides clear guidance for resolution.
+func (b *LocalBackend) formatNotFoundError(filePath string) error {
+	workspace := b.config.Workspace
+	if workspace == "" || workspace == defaultWorkspace {
+		return fmt.Errorf("%w: %s (workspace: default)", ErrStateFileNotFound, filePath)
+	}
+	return fmt.Errorf("%w: %s (workspace: %s)", ErrStateFileNotFound, filePath, workspace)
+}

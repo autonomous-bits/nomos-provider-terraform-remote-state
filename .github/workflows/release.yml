@@ -1,0 +1,197 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Release Binaries
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+          - goos: windows
+            goarch: amd64
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true
+
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          VERSION: ${{ steps.version.outputs.VERSION }}
+        run: |
+          binary_name="nomos-provider-terraform-remote-state"
+          output="${binary_name}-${VERSION}-${{ matrix.goos }}-${{ matrix.goarch }}"
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            output="${output}.exe"
+          fi
+          
+          go build -v -ldflags="-s -w -X main.version=${VERSION}" \
+            -o "$output" ./cmd/nomos-provider-terraform-remote-state
+          
+          echo "Built: $output"
+          ls -lh "$output"
+
+      - name: Compress binary (Unix)
+        if: matrix.goos != 'windows'
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+        run: |
+          binary="nomos-provider-terraform-remote-state-${VERSION}-${{ matrix.goos }}-${{ matrix.goarch }}"
+          gzip -9 "$binary"
+          echo "Compressed: ${binary}.gz"
+
+      - name: Compress binary (Windows)
+        if: matrix.goos == 'windows'
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+        run: |
+          binary="nomos-provider-terraform-remote-state-${VERSION}-${{ matrix.goos }}-${{ matrix.goarch }}.exe"
+          zip "${binary%.exe}.zip" "$binary"
+          rm "$binary"
+          echo "Compressed: ${binary%.exe}.zip"
+
+      - name: Generate checksum
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+        run: |
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            file="nomos-provider-terraform-remote-state-${VERSION}-${{ matrix.goos }}-${{ matrix.goarch }}.zip"
+          else
+            file="nomos-provider-terraform-remote-state-${VERSION}-${{ matrix.goos }}-${{ matrix.goarch }}.gz"
+          fi
+          sha256sum "$file" > "${file}.sha256"
+          cat "${file}.sha256"
+
+      - name: Upload compressed binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: |
+            *.gz
+            *.zip
+            *.sha256
+          retention-days: 30
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version from tag
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
+          echo "VERSION_NUMBER=${VERSION#v}" >> $GITHUB_OUTPUT
+
+      - name: Check if pre-release
+        id: prerelease
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          if echo "$VERSION" | grep -qE '(alpha|beta|rc)'; then
+            echo "PRERELEASE=true" >> $GITHUB_OUTPUT
+            echo "This is a pre-release version"
+          else
+            echo "PRERELEASE=false" >> $GITHUB_OUTPUT
+            echo "This is a stable release"
+          fi
+
+      - name: Extract release notes from CHANGELOG
+        id: changelog
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION_NUMBER }}"
+          
+          # Extract section between [VERSION] and next version or end of file
+          if grep -q "\[${VERSION}\]" CHANGELOG.md; then
+            awk "/\[${VERSION}\]/,/\[.*\]/ {
+              if (/\[${VERSION}\]/) { print; next }
+              if (/\[.*\]/) { exit }
+              print
+            }" CHANGELOG.md > release_notes.md
+            
+            # Remove trailing empty lines
+            sed -i '/^$/d' release_notes.md || sed -i '' '/^$/d' release_notes.md
+            
+            echo "Found release notes for version ${VERSION}"
+          else
+            echo "Release ${{ steps.version.outputs.VERSION }}" > release_notes.md
+            echo "" >> release_notes.md
+            echo "No changelog entry found for this version." >> release_notes.md
+          fi
+          
+          cat release_notes.md
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release-assets
+          find artifacts -type f \( -name "*.gz" -o -name "*.zip" -o -name "*.sha256" \) \
+            -exec cp {} release-assets/ \;
+          
+          # Create combined checksums file
+          cd release-assets
+          cat *.sha256 > SHA256SUMS.txt
+          rm *.sha256
+          
+          echo "Release assets:"
+          ls -lh
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          PRERELEASE="${{ steps.prerelease.outputs.PRERELEASE }}"
+          
+          # Build gh release create command
+          cmd="gh release create \"${VERSION}\" \
+            --title \"Release ${VERSION}\" \
+            --notes-file release_notes.md"
+          
+          if [ "$PRERELEASE" = "true" ]; then
+            cmd="$cmd --prerelease"
+          fi
+          
+          # Add all release assets
+          cmd="$cmd release-assets/*"
+          
+          echo "Creating release with command:"
+          echo "$cmd"
+          
+          eval "$cmd"
