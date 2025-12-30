@@ -36,12 +36,18 @@ type BackendConfig interface {
 // the backend type and the raw configuration map for backend constructors.
 type Config struct {
 	backendType string
+	workspace   string
 	raw         map[string]interface{}
 }
 
 // Type returns the backend type identifier.
 func (c *Config) Type() string {
 	return c.backendType
+}
+
+// Workspace returns the workspace name, defaulting to "default" if not specified.
+func (c *Config) Workspace() string {
+	return c.workspace
 }
 
 // Raw returns the complete configuration map.
@@ -98,8 +104,17 @@ func ParseConfig(configMap map[string]interface{}) (BackendConfig, error) {
 		return nil, ErrInvalidType
 	}
 
+	// Extract workspace field (optional, defaults to "default")
+	workspace := "default"
+	if workspaceValue, ok := configMap["workspace"]; ok {
+		if ws, ok := workspaceValue.(string); ok && ws != "" {
+			workspace = ws
+		}
+	}
+
 	return &Config{
 		backendType: backendType,
+		workspace:   workspace,
 		raw:         configMap,
 	}, nil
 }

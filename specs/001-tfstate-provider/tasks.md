@@ -153,13 +153,13 @@ description: "Task list for Terraform Remote State Provider implementation"
 
 ### Implementation for User Story 3
 
-- [ ] [I20] [US3] Add workspace parameter support in internal/config/config.go parsing workspace field from config, defaulting to "default" if omitted
-- [ ] [I21] [US3] Update LocalBackend in internal/backend/local.go to accept workspace parameter in constructor, store workspace field
-- [ ] [I22] [US3] Enhance workspace path resolution in LocalBackend.FetchState to handle workspace parameter: default workspace uses path as-is, named workspace constructs terraform.tfstate.d/<workspace>/terraform.tfstate
-- [ ] [I23] [US3] Add workspace validation in LocalBackend ensuring workspace path exists before attempting to read, return NotFound with workspace name in message if missing
-- [ ] [D2] [US3] Document Azure workspace handling in internal/backend/azurerm.go: workspace is embedded in key path (e.g., "env:/dev/terraform.tfstate"), provider treats key as opaque
-- [ ] [T13] [P] [US3] Add workspace tests in internal/backend/local_test.go for default workspace, named workspace path resolution, non-existent workspace
-- [ ] [T14] [US3] Create integration test in internal/provider/provider_integration_test.go for workspace selection: create multiple workspace state files, configure provider with specific workspace, verify correct state fetched
+- [X] [I20] [US3] Add workspace parameter support in internal/config/config.go parsing workspace field from config, defaulting to "default" if omitted
+- [X] [I21] [US3] Update LocalBackend in internal/backend/local.go to accept workspace parameter in constructor, store workspace field
+- [X] [I22] [US3] Enhance workspace path resolution in LocalBackend.FetchState to handle workspace parameter: default workspace uses path as-is, named workspace constructs terraform.tfstate.d/<workspace>/terraform.tfstate
+- [X] [I23] [US3] Add workspace validation in LocalBackend ensuring workspace path exists before attempting to read, return NotFound with workspace name in message if missing
+- [X] [D2] [US3] Document Azure workspace handling in internal/backend/azurerm.go: workspace is embedded in key path (e.g., "env:/dev/terraform.tfstate"), provider treats key as opaque
+- [X] [T13] [P] [US3] Add workspace tests in internal/backend/local_test.go for default workspace, named workspace path resolution, non-existent workspace
+- [X] [T14] [US3] Create integration test in internal/provider/provider_integration_test.go for workspace selection: create multiple workspace state files, configure provider with specific workspace, verify correct state fetched
 
 **Checkpoint**: All user stories should now be independently functional - workspaces supported for multi-environment scenarios
 
