@@ -10,6 +10,33 @@ import (
 	"github.com/autonomous-bits/nomos-provider-terraform-remote-state/internal/state"
 )
 
+func init() {
+	Register("local", func(ctx context.Context, config map[string]interface{}) (Backend, error) {
+		// Extract path (required)
+		pathValue, ok := config["path"]
+		if !ok {
+			return nil, fmt.Errorf("missing required field: path")
+		}
+		path, ok := pathValue.(string)
+		if !ok {
+			return nil, fmt.Errorf("path must be a string")
+		}
+
+		// Extract workspace (optional, defaults to "default")
+		workspace := "default"
+		if workspaceValue, ok := config["workspace"]; ok {
+			if ws, ok := workspaceValue.(string); ok && ws != "" {
+				workspace = ws
+			}
+		}
+
+		return NewLocalBackend(LocalBackendConfig{
+			Path:      path,
+			Workspace: workspace,
+		})
+	})
+}
+
 // Sentinel errors for local backend operations
 var (
 	// ErrStateFileNotFound indicates the state file does not exist at the specified path

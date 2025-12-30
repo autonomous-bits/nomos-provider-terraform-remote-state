@@ -12,7 +12,6 @@ package provider
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 
 	"google.golang.org/grpc/codes"
@@ -155,19 +154,10 @@ func (s *Service) Init(ctx context.Context, req *pb.InitRequest) (*pb.InitRespon
 		return nil, status.Errorf(codes.InvalidArgument, "invalid configuration: %v", err)
 	}
 
-	// Create backend based on type
-	var b backend.Backend
-	switch cfg.Type() {
-	case "local":
-		b, err = createLocalBackend(cfg)
-	case "azurerm":
-		b, err = createAzureBackend(ctx, cfg)
-	default:
-		return nil, status.Errorf(codes.InvalidArgument, "unsupported backend type: %s", cfg.Type())
-	}
-
+	// Get backend constructor from registry
+	b, err := backend.GetBackend(ctx, cfg.Type(), cfg.Raw())
 	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "failed to create backend: %v", err)
+		return nil, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	// Store instance
@@ -258,75 +248,6 @@ func (s *Service) Fetch(ctx context.Context, req *pb.FetchRequest) (*pb.FetchRes
 	return &pb.FetchResponse{
 		Value: value,
 	}, nil
-}
-
-// createLocalBackend creates a local backend from the config.
-func createLocalBackend(cfg config.BackendConfig) (backend.Backend, error) {
-	raw := cfg.Raw()
-
-	// Extract path
-	pathValue, ok := raw["path"]
-	if !ok {
-		return nil, fmt.Errorf("missing required field: path")
-	}
-	path, ok := pathValue.(string)
-	if !ok {
-		return nil, fmt.Errorf("path must be a string")
-	}
-
-	// Extract workspace (optional, defaults to "default")
-	workspace := "default"
-	if workspaceValue, ok := raw["workspace"]; ok {
-		if ws, ok := workspaceValue.(string); ok && ws != "" {
-			workspace = ws
-		}
-	}
-
-	return backend.NewLocalBackend(backend.LocalBackendConfig{
-		Path:      path,
-		Workspace: workspace,
-	})
-}
-
-// createAzureBackend creates an Azure backend from the config.
-func createAzureBackend(ctx context.Context, cfg config.BackendConfig) (backend.Backend, error) {
-	raw := cfg.Raw()
-
-	// Extract storage_account_name
-	storageAccountValue, ok := raw["storage_account_name"]
-	if !ok {
-		return nil, fmt.Errorf("missing required field: storage_account_name")
-	}
-	storageAccountName, ok := storageAccountValue.(string)
-	if !ok {
-		return nil, fmt.Errorf("storage_account_name must be a string")
-	}
-
-	// Extract container_name
-	containerValue, ok := raw["container_name"]
-	if !ok {
-		return nil, fmt.Errorf("missing required field: container_name")
-	}
-	containerName, ok := containerValue.(string)
-	if !ok {
-		return nil, fmt.Errorf("container_name must be a string")
-	}
-
-	// Extract key
-	keyValue, ok := raw["key"]
-	if !ok {
-		return nil, fmt.Errorf("missing required field: key")
-	}
-	key, ok := keyValue.(string)
-	if !ok {
-		return nil, fmt.Errorf("key must be a string")
-	}
-
-	return backend.NewAzureBackend(ctx, backend.AzureBackendConfig{
-		StorageAccountName: storageAccountName,
-		ContainerName:      containerName,
-		Key:                key,
-	})
 }
 
 // mapBackendError maps backend errors to appropriate gRPC status codes.

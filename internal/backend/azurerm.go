@@ -13,6 +13,46 @@ import (
 	"github.com/autonomous-bits/nomos-provider-terraform-remote-state/internal/state"
 )
 
+func init() {
+	Register("azurerm", func(ctx context.Context, config map[string]interface{}) (Backend, error) {
+		// Extract storage_account_name (required)
+		storageAccountValue, ok := config["storage_account_name"]
+		if !ok {
+			return nil, fmt.Errorf("missing required field: storage_account_name")
+		}
+		storageAccountName, ok := storageAccountValue.(string)
+		if !ok {
+			return nil, fmt.Errorf("storage_account_name must be a string")
+		}
+
+		// Extract container_name (required)
+		containerValue, ok := config["container_name"]
+		if !ok {
+			return nil, fmt.Errorf("missing required field: container_name")
+		}
+		containerName, ok := containerValue.(string)
+		if !ok {
+			return nil, fmt.Errorf("container_name must be a string")
+		}
+
+		// Extract key (required)
+		keyValue, ok := config["key"]
+		if !ok {
+			return nil, fmt.Errorf("missing required field: key")
+		}
+		key, ok := keyValue.(string)
+		if !ok {
+			return nil, fmt.Errorf("key must be a string")
+		}
+
+		return NewAzureBackend(ctx, AzureBackendConfig{
+			StorageAccountName: storageAccountName,
+			ContainerName:      containerName,
+			Key:                key,
+		})
+	})
+}
+
 // Sentinel errors for Azure backend operations
 var (
 	// ErrBlobNotFound indicates the blob does not exist in the container

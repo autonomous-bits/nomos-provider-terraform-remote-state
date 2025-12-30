@@ -131,15 +131,15 @@ description: "Task list for Terraform Remote State Provider implementation"
 
 ### Implementation for User Story 2
 
-- [ ] [A4] [US2] Refactor backend factory in internal/provider/provider.go to use registry pattern with map[string]BackendConstructor
-- [ ] [A5] [US2] Create backend constructor type in internal/backend/backend.go: type BackendConstructor func(ctx context.Context, config map[string]interface{}) (Backend, error)
-- [ ] [I15] [US2] Create backend registration function in internal/backend/backend.go: RegisterBackend(name string, constructor BackendConstructor)
-- [ ] [I16] [US2] Update LocalBackend to self-register in init() function in internal/backend/local.go using RegisterBackend("local", NewLocalBackend)
-- [ ] [I17] [US2] Update AzureBackend to self-register in init() function in internal/backend/azurerm.go using RegisterBackend("azurerm", NewAzureBackend)
-- [ ] [I18] [US2] Add backend factory GetBackend function in internal/backend/backend.go looking up constructor in registry, return InvalidArgument if type not found
-- [ ] [I19] [US2] Update Init RPC in internal/provider/provider.go to use GetBackend factory instead of switch statement
-- [ ] [T12] [P] [US2] Create backend factory tests in internal/backend/backend_test.go verifying registration, lookup, error for unknown type
-- [ ] [D1] [P] [US2] Add documentation in internal/backend/README.md explaining how to add new backend types: implement Backend interface, add constructor, call RegisterBackend
+- [X] [A4] [US2] Refactor backend factory in internal/provider/provider.go to use registry pattern with map[string]BackendConstructor
+- [X] [A5] [US2] Create backend constructor type in internal/backend/backend.go: type BackendConstructor func(ctx context.Context, config map[string]interface{}) (Backend, error)
+- [X] [I15] [US2] Create backend registration function in internal/backend/backend.go: RegisterBackend(name string, constructor BackendConstructor)
+- [X] [I16] [US2] Update LocalBackend to self-register in init() function in internal/backend/local.go using RegisterBackend("local", NewLocalBackend)
+- [X] [I17] [US2] Update AzureBackend to self-register in init() function in internal/backend/azurerm.go using RegisterBackend("azurerm", NewAzureBackend)
+- [X] [I18] [US2] Add backend factory GetBackend function in internal/backend/backend.go looking up constructor in registry, return InvalidArgument if type not found
+- [X] [I19] [US2] Update Init RPC in internal/provider/provider.go to use GetBackend factory instead of switch statement
+- [X] [T12] [P] [US2] Create backend factory tests in internal/backend/backend_test.go verifying registration, lookup, error for unknown type
+- [X] [D1] [P] [US2] Add documentation in internal/backend/README.md explaining how to add new backend types: implement Backend interface, add constructor, call RegisterBackend
 
 **Checkpoint**: At this point, backend architecture is extensible - new backends can be added without modifying provider core
 
