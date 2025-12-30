@@ -1,0 +1,35 @@
+# golangci-lint configuration for nomos-provider-terraform-remote-state
+# https://golangci-lint.run/usage/configuration/
+
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - typecheck
+    - unused
+    - gofmt
+    - goimports
+    - misspell
+    - gocritic
+    - revive
+    - gosec
+    - gocyclo
+    - dupl
+    - bodyclose
+    - noctx
+    - errname
+    - errorlint
+    - exportloopref
+    - goconst
+    - goprintffuncname
+    - predeclared
+    - unconvert
+    - unparam
