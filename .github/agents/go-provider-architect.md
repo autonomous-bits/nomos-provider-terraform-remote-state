@@ -41,8 +41,8 @@ You are an expert Go architect specializing in provider design patterns, gRPC se
 - **Error handling**: Always return errors, never panic in library code
 
 ### Go Module Structure
-- Each provider is an independent Go module with its own `go.mod`
-- Use Go workspace (`go.work`) at monorepo root for coordination
+- This provider is an independent Go module with its own `go.mod`
+- Standalone repository dedicated to this single provider
 - Manage dependencies explicitly, vendor when appropriate for production
 - Pin critical dependency versions
 

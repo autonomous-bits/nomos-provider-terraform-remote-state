@@ -532,7 +532,7 @@ Use this checklist to validate provider compliance:
 ### Project Structure
 - [ ] Standard layout: cmd/, internal/, pkg/, docs/, examples/
 - [ ] Independent Go module with go.mod
-- [ ] Part of workspace (go.work at monorepo root)
+- [ ] Standalone repository for this provider
 - [ ] Proper use of internal/ for private packages
 
 ### ProviderService Implementation
