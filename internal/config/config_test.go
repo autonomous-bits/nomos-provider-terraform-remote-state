@@ -262,6 +262,57 @@ func TestConfig_Raw(t *testing.T) {
 	}
 }
 
+func TestConfig_Workspace(t *testing.T) {
+	tests := []struct {
+		name          string
+		workspace     string
+		wantWorkspace string
+	}{
+		{
+			name:          "default workspace",
+			workspace:     "default",
+			wantWorkspace: "default",
+		},
+		{
+			name:          "production workspace",
+			workspace:     "production",
+			wantWorkspace: "production",
+		},
+		{
+			name:          "dev workspace",
+			workspace:     "dev",
+			wantWorkspace: "dev",
+		},
+		{
+			name:          "empty workspace",
+			workspace:     "",
+			wantWorkspace: "",
+		},
+		{
+			name:          "workspace with hyphen",
+			workspace:     "feature-branch",
+			wantWorkspace: "feature-branch",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Config{
+				backendType: "local",
+				workspace:   tt.workspace,
+				raw: map[string]interface{}{
+					"type":      "local",
+					"workspace": tt.workspace,
+				},
+			}
+
+			if got := c.Workspace(); got != tt.wantWorkspace {
+				t.Errorf("Config.Workspace() = %v, want %v", got, tt.wantWorkspace)
+			}
+		})
+	}
+}
+
 func TestBackendConfigInterface(t *testing.T) {
 	// Verify Config implements BackendConfig interface
 	var _ BackendConfig = (*Config)(nil)

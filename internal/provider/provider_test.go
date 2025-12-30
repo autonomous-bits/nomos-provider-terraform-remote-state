@@ -2,9 +2,13 @@ package provider
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"testing"
 
+	"github.com/autonomous-bits/nomos-provider-terraform-remote-state/internal/backend"
 	pb "github.com/autonomous-bits/nomos/libs/provider-proto/gen/go/nomos/provider/v1"
+	"google.golang.org/grpc/status"
 )
 
 // TestNewService verifies that NewService creates a properly initialized Service.
@@ -168,5 +172,90 @@ func TestShutdownEmptyService(t *testing.T) {
 	// Verify no instances after shutdown
 	if len(service.instances) != 0 {
 		t.Errorf("expected 0 instances after shutdown, got %d", len(service.instances))
+	}
+}
+
+// TestMapBackendError verifies proper error mapping from backend errors to gRPC status codes.
+func TestMapBackendError(t *testing.T) {
+	tests := []struct {
+		name     string
+		err      error
+		wantCode string
+		wantMsg  string
+	}{
+		{
+			name:     "state file not found",
+			err:      backend.ErrStateFileNotFound,
+			wantCode: "NotFound",
+			wantMsg:  "state file not found",
+		},
+		{
+			name:     "blob not found",
+			err:      backend.ErrBlobNotFound,
+			wantCode: "NotFound",
+			wantMsg:  "blob not found",
+		},
+		{
+			name:     "authentication failed",
+			err:      backend.ErrAuthenticationFailed,
+			wantCode: "PermissionDenied",
+			wantMsg:  "authentication failed",
+		},
+		{
+			name:     "context cancelled",
+			err:      context.Canceled,
+			wantCode: "Canceled",
+			wantMsg:  "operation cancelled",
+		},
+		{
+			name:     "context deadline exceeded",
+			err:      context.DeadlineExceeded,
+			wantCode: "DeadlineExceeded",
+			wantMsg:  "operation timed out",
+		},
+		{
+			name:     "generic error",
+			err:      errors.New("unexpected error"),
+			wantCode: "Internal",
+			wantMsg:  "backend error: unexpected error",
+		},
+		{
+			name:     "wrapped state file not found",
+			err:      fmt.Errorf("wrapped: %w", backend.ErrStateFileNotFound),
+			wantCode: "NotFound",
+			wantMsg:  "state file not found",
+		},
+		{
+			name:     "wrapped authentication error",
+			err:      fmt.Errorf("connection issue: %w", backend.ErrAuthenticationFailed),
+			wantCode: "PermissionDenied",
+			wantMsg:  "authentication failed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			grpcErr := mapBackendError(tt.err)
+			if grpcErr == nil {
+				t.Fatal("mapBackendError returned nil")
+			}
+
+			st, ok := status.FromError(grpcErr)
+			if !ok {
+				t.Fatal("returned error is not a gRPC status error")
+			}
+
+			// Check the code
+			gotCode := st.Code().String()
+			if gotCode != tt.wantCode {
+				t.Errorf("got code %s, want %s", gotCode, tt.wantCode)
+			}
+
+			// Check the message
+			gotMsg := st.Message()
+			if gotMsg != tt.wantMsg {
+				t.Errorf("got message %q, want %q", gotMsg, tt.wantMsg)
+			}
+		})
 	}
 }
