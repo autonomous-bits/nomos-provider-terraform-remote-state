@@ -6,7 +6,7 @@
 *.dylib
 bin/
 dist/
-nomos-provider-terraform-remote-state
+/nomos-provider-terraform-remote-state
 
 # Test binary, built with `go test -c`
 *.test
