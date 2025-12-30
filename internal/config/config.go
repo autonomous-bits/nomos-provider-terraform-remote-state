@@ -164,10 +164,8 @@ func validatePath(path string) error {
 
 	// Reject absolute paths that try to escape filesystem boundaries
 	// This is a defense-in-depth measure
-	if filepath.IsAbs(path) {
-		// Allow absolute paths, but validate they don't contain traversal
-		// after cleaning (already checked above)
-	}
+	// Absolute paths are allowed, but they must not contain traversal patterns
+	// (already validated by the path traversal check above)
 
 	// Validate against allowed character set
 	if !validPathRegex.MatchString(path) {
