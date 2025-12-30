@@ -13,6 +13,8 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -27,6 +29,69 @@ import (
 // It defaults to "dev" for development builds.
 var version = "dev"
 
+// metrics tracks RPC call counts, errors, and durations for observability.
+//
+// This is a simple in-memory metrics implementation for MVP. It uses atomic operations
+// for thread-safe increments without requiring mutexes. All counters are monotonically
+// increasing and reset only on service restart.
+//
+// Future Enhancement: Replace this struct with a real metrics library:
+//   - Prometheus: Use prometheus.Counter and prometheus.Histogram types
+//   - OpenTelemetry: Use meter.Int64Counter and meter.Float64Histogram
+//   - Export endpoint: Add HTTP /metrics endpoint or OTLP exporter
+//
+// The current structure matches common metrics library patterns (method-specific counters)
+// to make migration straightforward. When replacing, convert each atomic field to the
+// corresponding metrics library primitive and add labels/attributes as needed.
+type metrics struct {
+	// Call counters: total invocations per RPC method
+	initCalls     atomic.Int64
+	fetchCalls    atomic.Int64
+	infoCalls     atomic.Int64
+	healthCalls   atomic.Int64
+	shutdownCalls atomic.Int64
+
+	// Error counters: failed invocations per RPC method
+	initErrors     atomic.Int64
+	fetchErrors    atomic.Int64
+	infoErrors     atomic.Int64
+	healthErrors   atomic.Int64
+	shutdownErrors atomic.Int64
+
+	// Duration tracking: sum of durations in nanoseconds
+	// To get average: totalDuration / totalCalls
+	// For percentiles, a real metrics library with histograms is needed
+	initDurationNs     atomic.Int64
+	fetchDurationNs    atomic.Int64
+	infoDurationNs     atomic.Int64
+	healthDurationNs   atomic.Int64
+	shutdownDurationNs atomic.Int64
+}
+
+// recordCall increments the call counter and returns a function to record duration and errors.
+//
+// This helper function simplifies RPC method instrumentation:
+//
+//	done := s.metrics.recordCall(&s.metrics.initCalls, &s.metrics.initDurationNs)
+//	defer done(&err, &s.metrics.initErrors)
+//
+// The returned function should be deferred and will:
+//   - Record the call duration
+//   - Increment error counter if err is not nil
+func (m *metrics) recordCall(callCounter, durationCounter *atomic.Int64) func(err *error, errorCounter *atomic.Int64) {
+	start := time.Now()
+	callCounter.Add(1)
+
+	return func(err *error, errorCounter *atomic.Int64) {
+		duration := time.Since(start)
+		durationCounter.Add(duration.Nanoseconds())
+
+		if err != nil && *err != nil {
+			errorCounter.Add(1)
+		}
+	}
+}
+
 // Service implements the ProviderService gRPC interface for Terraform Remote State provider.
 //
 // Service manages multiple provider instances (one per alias) and provides operations for
@@ -39,6 +104,7 @@ type Service struct {
 	pb.UnimplementedProviderServiceServer
 	mu        sync.RWMutex
 	instances map[string]*instance
+	metrics   metrics
 }
 
 // instance represents a single provider instance identified by an alias.
@@ -77,7 +143,10 @@ func SetVersion(v string) {
 //   - type: "terraform-remote-state"
 //   - version: Build version from ldflags or "dev" for development builds
 //   - alias: Empty string (instance-specific aliases are tracked per instance)
-func (s *Service) Info(_ context.Context, _ *pb.InfoRequest) (*pb.InfoResponse, error) {
+func (s *Service) Info(_ context.Context, _ *pb.InfoRequest) (resp *pb.InfoResponse, err error) {
+	done := s.metrics.recordCall(&s.metrics.infoCalls, &s.metrics.infoDurationNs)
+	defer done(&err, &s.metrics.infoErrors)
+
 	return &pb.InfoResponse{
 		Type:    "terraform-remote-state",
 		Version: version,
@@ -90,7 +159,10 @@ func (s *Service) Info(_ context.Context, _ *pb.InfoRequest) (*pb.InfoResponse, 
 // Returns STATUS_OK if the service is healthy and ready to accept requests.
 // The service is considered healthy if it has been properly initialized and
 // the backend connection is working.
-func (s *Service) Health(_ context.Context, _ *pb.HealthRequest) (*pb.HealthResponse, error) {
+func (s *Service) Health(_ context.Context, _ *pb.HealthRequest) (resp *pb.HealthResponse, err error) {
+	done := s.metrics.recordCall(&s.metrics.healthCalls, &s.metrics.healthDurationNs)
+	defer done(&err, &s.metrics.healthErrors)
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -108,7 +180,10 @@ func (s *Service) Health(_ context.Context, _ *pb.HealthRequest) (*pb.HealthResp
 //   - Clearing backend references
 //
 // After shutdown, the service can accept new Init requests for new instances.
-func (s *Service) Shutdown(_ context.Context, _ *pb.ShutdownRequest) (*pb.ShutdownResponse, error) {
+func (s *Service) Shutdown(_ context.Context, _ *pb.ShutdownRequest) (resp *pb.ShutdownResponse, err error) {
+	done := s.metrics.recordCall(&s.metrics.shutdownCalls, &s.metrics.shutdownDurationNs)
+	defer done(&err, &s.metrics.shutdownErrors)
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -133,7 +208,10 @@ func (s *Service) Shutdown(_ context.Context, _ *pb.ShutdownRequest) (*pb.Shutdo
 //   - Backend-specific validation fails
 //
 // Returns codes.FailedPrecondition if the alias is already initialized.
-func (s *Service) Init(ctx context.Context, req *pb.InitRequest) (*pb.InitResponse, error) {
+func (s *Service) Init(ctx context.Context, req *pb.InitRequest) (resp *pb.InitResponse, err error) {
+	done := s.metrics.recordCall(&s.metrics.initCalls, &s.metrics.initDurationNs)
+	defer done(&err, &s.metrics.initErrors)
+
 	// Validate alias
 	if req.Alias == "" {
 		return nil, status.Error(codes.InvalidArgument, "alias cannot be empty")
@@ -191,7 +269,10 @@ func (s *Service) Init(ctx context.Context, req *pb.InitRequest) (*pb.InitRespon
 // Returns codes.Unavailable for network errors.
 // Returns codes.PermissionDenied for authentication errors.
 // Returns codes.Internal for parsing errors.
-func (s *Service) Fetch(ctx context.Context, req *pb.FetchRequest) (*pb.FetchResponse, error) {
+func (s *Service) Fetch(ctx context.Context, req *pb.FetchRequest) (resp *pb.FetchResponse, err error) {
+	done := s.metrics.recordCall(&s.metrics.fetchCalls, &s.metrics.fetchDurationNs)
+	defer done(&err, &s.metrics.fetchErrors)
+
 	// For MVP: get any instance (typically there's only one)
 	// Future: Use req.Alias to select specific instance
 	s.mu.RLock()

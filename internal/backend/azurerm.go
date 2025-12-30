@@ -59,6 +59,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"regexp"
 	"strings"
 
@@ -70,6 +71,7 @@ import (
 func init() {
 	Register("azurerm", func(ctx context.Context, config map[string]interface{}) (Backend, error) {
 		// Extract storage_account_name (required)
+		// Security: Validation happens in config.ParseConfig
 		storageAccountValue, ok := config["storage_account_name"]
 		if !ok {
 			return nil, fmt.Errorf("missing required field: storage_account_name")
@@ -80,6 +82,7 @@ func init() {
 		}
 
 		// Extract container_name (required)
+		// Security: Validation happens in config.ParseConfig
 		containerValue, ok := config["container_name"]
 		if !ok {
 			return nil, fmt.Errorf("missing required field: container_name")
@@ -90,6 +93,7 @@ func init() {
 		}
 
 		// Extract key (required)
+		// Security: Validation happens in config.ParseConfig
 		keyValue, ok := config["key"]
 		if !ok {
 			return nil, fmt.Errorf("missing required field: key")
@@ -317,6 +321,11 @@ func NewAzureBackend(_ context.Context, cfg AzureBackendConfig) (*AzureBackend, 
 // Returns state.ErrUnsupportedVersion if the state version is < 4.
 // Returns context.Canceled if the context is cancelled before download completes.
 func (b *AzureBackend) FetchState(ctx context.Context) (*state.StateFile, error) {
+	slog.InfoContext(ctx, "fetching state from azure backend",
+		"storage_account", b.config.StorageAccountName,
+		"container", b.config.ContainerName,
+		"key", b.config.Key)
+
 	// Check context cancellation before starting
 	select {
 	case <-ctx.Done():
@@ -327,6 +336,11 @@ func (b *AzureBackend) FetchState(ctx context.Context) (*state.StateFile, error)
 	// Download the blob
 	data, err := b.downloader.DownloadBlob(ctx)
 	if err != nil {
+		slog.ErrorContext(ctx, "failed to download blob",
+			"storage_account", b.config.StorageAccountName,
+			"container", b.config.ContainerName,
+			"key", b.config.Key,
+			"error", err)
 		return nil, err
 	}
 
@@ -340,8 +354,18 @@ func (b *AzureBackend) FetchState(ctx context.Context) (*state.StateFile, error)
 	// Parse the state file
 	stateFile, err := state.ParseStateFile(data)
 	if err != nil {
+		slog.ErrorContext(ctx, "failed to parse state file",
+			"storage_account", b.config.StorageAccountName,
+			"container", b.config.ContainerName,
+			"key", b.config.Key,
+			"error", err)
 		return nil, fmt.Errorf("failed to parse state file: %w", err)
 	}
 
+	slog.InfoContext(ctx, "successfully fetched state from azure backend",
+		"storage_account", b.config.StorageAccountName,
+		"container", b.config.ContainerName,
+		"key", b.config.Key,
+		"state_version", stateFile.Version)
 	return stateFile, nil
 }
