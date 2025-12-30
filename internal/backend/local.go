@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -20,6 +21,12 @@ func init() {
 		path, ok := pathValue.(string)
 		if !ok {
 			return nil, fmt.Errorf("path must be a string")
+		}
+
+		// Path validation happens in config.ParseConfig, but we double-check here
+		// as defense-in-depth
+		if path == "" {
+			return nil, ErrInvalidPath
 		}
 
 		// Extract workspace (optional, defaults to "default")
@@ -111,6 +118,8 @@ func NewLocalBackend(cfg LocalBackendConfig) (*LocalBackend, error) {
 // Returns state.ErrUnsupportedVersion if the state version is < 4.
 // Returns context.Canceled if the context is cancelled before reading completes.
 func (b *LocalBackend) FetchState(ctx context.Context) (*state.StateFile, error) {
+	slog.InfoContext(ctx, "fetching state from local backend", "workspace", b.config.Workspace)
+
 	// Check context cancellation before starting
 	select {
 	case <-ctx.Done():
@@ -131,8 +140,10 @@ func (b *LocalBackend) FetchState(ctx context.Context) (*state.StateFile, error)
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
+			slog.ErrorContext(ctx, "state file not found", "workspace", b.config.Workspace, "error", err)
 			return nil, b.formatNotFoundError(filePath)
 		}
+		slog.ErrorContext(ctx, "failed to read state file", "workspace", b.config.Workspace, "error", err)
 		return nil, fmt.Errorf("failed to read state file: %w", err)
 	}
 
@@ -146,9 +157,11 @@ func (b *LocalBackend) FetchState(ctx context.Context) (*state.StateFile, error)
 	// Parse the state file
 	stateFile, err := state.ParseStateFile(data)
 	if err != nil {
+		slog.ErrorContext(ctx, "failed to parse state file", "workspace", b.config.Workspace, "error", err)
 		return nil, fmt.Errorf("failed to parse state file: %w", err)
 	}
 
+	slog.InfoContext(ctx, "successfully fetched state from local backend", "workspace", b.config.Workspace, "state_version", stateFile.Version)
 	return stateFile, nil
 }
 
@@ -156,6 +169,9 @@ func (b *LocalBackend) FetchState(ctx context.Context) (*state.StateFile, error)
 //
 // For "default" workspace: returns the path as-is.
 // For named workspaces: inserts terraform.tfstate.d/<workspace>/ into the path.
+//
+// Security: This function assumes workspace name has already been validated
+// by config.ParseConfig to prevent path traversal attacks.
 //
 // Examples:
 //   - default workspace: "/path/to/terraform.tfstate" -> "/path/to/terraform.tfstate"
@@ -167,6 +183,7 @@ func (b *LocalBackend) resolveWorkspacePath() string {
 	}
 
 	// For named workspaces, insert terraform.tfstate.d/<workspace>/ into the path
+	// Security: workspace name has been validated to not contain ../ or directory separators
 	dir := filepath.Dir(b.config.Path)
 	filename := filepath.Base(b.config.Path)
 
