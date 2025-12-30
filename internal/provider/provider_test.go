@@ -16,11 +16,11 @@ func TestNewService(t *testing.T) {
 	}
 
 	if service.instances == nil {
-		t.Error("instances map not initialized")
+		t.Error("instances map should be initialized")
 	}
 
 	if len(service.instances) != 0 {
-		t.Errorf("expected empty instances map, got %d instances", len(service.instances))
+		t.Errorf("expected 0 instances, got %d", len(service.instances))
 	}
 }
 
@@ -165,8 +165,8 @@ func TestShutdownEmptyService(t *testing.T) {
 		t.Error("expected non-nil response")
 	}
 
-	// Verify still empty after shutdown
+	// Verify no instances after shutdown
 	if len(service.instances) != 0 {
-		t.Errorf("expected 0 instances, got %d", len(service.instances))
+		t.Errorf("expected 0 instances after shutdown, got %d", len(service.instances))
 	}
 }
