@@ -51,17 +51,17 @@ description: "Task list for Terraform Remote State Provider implementation"
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] [G1] Create main entry point in cmd/nomos-provider-terraform-remote-state/main.go with gRPC server setup, port discovery (print PROVIDER_PORT), and signal handling
-- [ ] [A1] [P] Define Backend interface in internal/backend/backend.go with FetchState(ctx context.Context) (*state.StateFile, error) method
-- [ ] [A2] [P] Define StateFile struct in internal/state/types.go with Version, TerraformVersion, Serial, Lineage, Outputs fields
-- [ ] [A3] [P] Define OutputValue struct in internal/state/types.go with Value, Type, Sensitive fields
-- [ ] [I1] [P] Create state file parser in internal/state/parser.go with ParseStateFile(data []byte) (*StateFile, error) function
-- [ ] [T1] [P] Create state file parser tests in internal/state/parser_test.go with test cases for valid state v4, invalid JSON, unsupported version < 4
-- [ ] [I2] Create config parser in internal/config/config.go with ParseConfig(configMap map[string]interface{}) (BackendConfig, error) function
-- [ ] [G2] Create gRPC provider service skeleton in internal/provider/provider.go with UnimplementedProviderServiceServer embedding, mutex, initialized flag, alias, backend fields
-- [ ] [G3] [P] Implement Info RPC in internal/provider/provider.go returning type="terraform-remote-state", version from build metadata
-- [ ] [G4] [P] Implement Health RPC in internal/provider/provider.go returning STATUS_OK when initialized, STATUS_UNKNOWN when not initialized
-- [ ] [G5] [P] Implement Shutdown RPC in internal/provider/provider.go to gracefully close backend connections
+- [X] [G1] Create main entry point in cmd/nomos-provider-terraform-remote-state/main.go with gRPC server setup, port discovery (print PROVIDER_PORT), and signal handling
+- [X] [A1] [P] Define Backend interface in internal/backend/backend.go with FetchState(ctx context.Context) (*state.StateFile, error) method
+- [X] [A2] [P] Define StateFile struct in internal/state/types.go with Version, TerraformVersion, Serial, Lineage, Outputs fields
+- [X] [A3] [P] Define OutputValue struct in internal/state/types.go with Value, Type, Sensitive fields
+- [X] [I1] [P] Create state file parser in internal/state/parser.go with ParseStateFile(data []byte) (*StateFile, error) function
+- [X] [T1] [P] Create state file parser tests in internal/state/parser_test.go with test cases for valid state v4, invalid JSON, unsupported version < 4
+- [X] [I2] Create config parser in internal/config/config.go with ParseConfig(configMap map[string]interface{}) (BackendConfig, error) function
+- [X] [G2] Create gRPC provider service skeleton in internal/provider/provider.go with UnimplementedProviderServiceServer embedding, mutex, initialized flag, alias, backend fields
+- [X] [G3] [P] Implement Info RPC in internal/provider/provider.go returning type="terraform-remote-state", version from build metadata
+- [X] [G4] [P] Implement Health RPC in internal/provider/provider.go returning STATUS_OK when initialized, STATUS_UNKNOWN when not initialized
+- [X] [G5] [P] Implement Shutdown RPC in internal/provider/provider.go to gracefully close backend connections
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
