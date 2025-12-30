@@ -11,7 +11,7 @@ import (
 )
 
 func init() {
-	Register("local", func(ctx context.Context, config map[string]interface{}) (Backend, error) {
+	Register("local", func(_ context.Context, config map[string]interface{}) (Backend, error) {
 		// Extract path (required)
 		pathValue, ok := config["path"]
 		if !ok {
@@ -23,7 +23,7 @@ func init() {
 		}
 
 		// Extract workspace (optional, defaults to "default")
-		workspace := "default"
+		workspace := defaultWorkspace
 		if workspaceValue, ok := config["workspace"]; ok {
 			if ws, ok := workspaceValue.(string); ok && ws != "" {
 				workspace = ws
@@ -44,6 +44,11 @@ var (
 
 	// ErrInvalidPath indicates the path is invalid or empty
 	ErrInvalidPath = errors.New("path cannot be empty")
+)
+
+const (
+	// defaultWorkspace is the name of the default Terraform workspace
+	defaultWorkspace = "default"
 )
 
 // LocalBackendConfig holds configuration for the local file backend.
@@ -89,7 +94,7 @@ func NewLocalBackend(cfg LocalBackendConfig) (*LocalBackend, error) {
 
 	// Default to "default" workspace if empty
 	if cfg.Workspace == "" {
-		cfg.Workspace = "default"
+		cfg.Workspace = defaultWorkspace
 	}
 
 	return &LocalBackend{
@@ -116,12 +121,17 @@ func (b *LocalBackend) FetchState(ctx context.Context) (*state.StateFile, error)
 	// Resolve the actual file path based on workspace
 	filePath := b.resolveWorkspacePath()
 
+	// Validate workspace path exists
+	if err := b.validateWorkspacePath(filePath); err != nil {
+		return nil, err
+	}
+
 	// Read the state file
 	// #nosec G304 -- file path is validated from configuration
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("%w: %s", ErrStateFileNotFound, filePath)
+			return nil, b.formatNotFoundError(filePath)
 		}
 		return nil, fmt.Errorf("failed to read state file: %w", err)
 	}
@@ -152,7 +162,7 @@ func (b *LocalBackend) FetchState(ctx context.Context) (*state.StateFile, error)
 //   - production workspace: "/path/to/terraform.tfstate" -> "/path/to/terraform.tfstate.d/production/terraform.tfstate"
 func (b *LocalBackend) resolveWorkspacePath() string {
 	workspace := b.config.Workspace
-	if workspace == "" || workspace == "default" {
+	if workspace == "" || workspace == defaultWorkspace {
 		return b.config.Path
 	}
 
@@ -161,4 +171,30 @@ func (b *LocalBackend) resolveWorkspacePath() string {
 	filename := filepath.Base(b.config.Path)
 
 	return filepath.Join(dir, "terraform.tfstate.d", workspace, filename)
+}
+
+// validateWorkspacePath validates that the workspace path exists and is accessible.
+//
+// Returns ErrStateFileNotFound with a descriptive message if the path doesn't exist.
+func (b *LocalBackend) validateWorkspacePath(filePath string) error {
+	// Check if the file exists
+	if _, err := os.Stat(filePath); err != nil {
+		if os.IsNotExist(err) {
+			return b.formatNotFoundError(filePath)
+		}
+		return fmt.Errorf("failed to access state file: %w", err)
+	}
+	return nil
+}
+
+// formatNotFoundError creates a descriptive error message for missing state files.
+//
+// The error message includes the workspace name to help users identify which
+// workspace is being accessed and provides clear guidance for resolution.
+func (b *LocalBackend) formatNotFoundError(filePath string) error {
+	workspace := b.config.Workspace
+	if workspace == "" || workspace == defaultWorkspace {
+		return fmt.Errorf("%w: %s (workspace: default)", ErrStateFileNotFound, filePath)
+	}
+	return fmt.Errorf("%w: %s (workspace: %s)", ErrStateFileNotFound, filePath, workspace)
 }

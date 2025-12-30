@@ -21,7 +21,7 @@ type mockBackend struct {
 	err    error
 }
 
-func (m *mockBackend) FetchState(ctx context.Context) (*state.StateFile, error) {
+func (m *mockBackend) FetchState(_ context.Context) (*state.StateFile, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
@@ -49,7 +49,7 @@ func mockConstructor(ctx context.Context, config map[string]interface{}) (Backen
 }
 
 // errorConstructor always returns an error for testing error propagation.
-func errorConstructor(ctx context.Context, config map[string]interface{}) (Backend, error) {
+func errorConstructor(_ context.Context, _ map[string]interface{}) (Backend, error) {
 	return nil, errors.New("constructor error")
 }
 
@@ -233,9 +233,8 @@ func TestList(t *testing.T) {
 		// Get the list
 		types := List()
 
-		// Modify the returned slice
+		// Store original length
 		originalLen := len(types)
-		types = append(types, "modified-backend")
 
 		// Get the list again
 		newTypes := List()
@@ -244,6 +243,9 @@ func TestList(t *testing.T) {
 		if len(newTypes) != originalLen {
 			t.Errorf("List() slice was not a copy, length changed from %d to %d", originalLen, len(newTypes))
 		}
+
+		// Modifying the returned slice should not affect subsequent calls
+		_ = append(types, "modified-backend")
 
 		// Should not contain the modification
 		for _, backendType := range newTypes {
@@ -789,9 +791,11 @@ func TestMockBackend(t *testing.T) {
 		result, err := mock.FetchState(context.Background())
 		if err != nil {
 			t.Errorf("FetchState() error = %v", err)
+			return
 		}
 		if result == nil {
 			t.Error("FetchState() returned nil state")
+			return
 		}
 		if result.Version != 4 {
 			t.Errorf("FetchState() version = %d, want 4", result.Version)

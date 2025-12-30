@@ -1,3 +1,57 @@
+// Package backend implements Terraform remote state backends.
+//
+// # Azure Backend Workspace Handling
+//
+// The Azure backend handles workspaces differently from the local backend.
+// Unlike the local backend which uses a separate "terraform.tfstate.d" directory
+// structure, the Azure backend embeds workspace information directly in the
+// blob key (path).
+//
+// The provider treats the key as an opaque string and does NOT manipulate it
+// based on the workspace parameter. Users must specify the complete blob path
+// including any workspace-specific path segments in their Terraform backend
+// configuration.
+//
+// Common workspace patterns:
+//
+//   - Default workspace: key = "terraform.tfstate"
+//   - Named workspace (env prefix): key = "env:/dev/terraform.tfstate"
+//   - Named workspace (workspaces dir): key = "workspaces/dev/terraform.tfstate"
+//   - Custom pattern: key = "states/production/app.tfstate"
+//
+// The specific pattern used depends on the user's Terraform backend configuration.
+// Terraform's azurerm backend uses the "env:" prefix by default for named workspaces,
+// but users may configure custom key patterns.
+//
+// Example Terraform configurations:
+//
+//	# Default workspace
+//	terraform {
+//	  backend "azurerm" {
+//	    storage_account_name = "mystorageaccount"
+//	    container_name       = "tfstate"
+//	    key                  = "terraform.tfstate"
+//	  }
+//	}
+//
+//	# Named workspace with env: prefix (Terraform default)
+//	# For workspace "dev", Terraform uses key "env:/dev/terraform.tfstate"
+//	terraform {
+//	  backend "azurerm" {
+//	    storage_account_name = "mystorageaccount"
+//	    container_name       = "tfstate"
+//	    key                  = "terraform.tfstate"  # Base key, Terraform adds workspace prefix
+//	  }
+//	}
+//
+//	# Custom workspace pattern
+//	terraform {
+//	  backend "azurerm" {
+//	    storage_account_name = "mystorageaccount"
+//	    container_name       = "tfstate"
+//	    key                  = "workspaces/${terraform.workspace}/terraform.tfstate"
+//	  }
+//	}
 package backend
 
 import (
@@ -84,11 +138,27 @@ var containerNameRegex = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{1,61}[a-z0-9])?
 // authentication methods including environment variables, managed identity,
 // Azure CLI, and more.
 //
+// # Workspace Handling
+//
+// For the Azure backend, workspace information is embedded in the Key (blob path).
+// The provider does NOT manipulate the key based on workspace parameters.
+// Users must specify the complete blob path including any workspace-specific
+// path segments.
+//
+// Examples:
+//   - Default workspace: Key = "terraform.tfstate"
+//   - Named workspace: Key = "env:/dev/terraform.tfstate"
+//   - Workspaces directory: Key = "workspaces/production/terraform.tfstate"
+//
+// The specific pattern depends on how the Terraform backend is configured.
+// Terraform's azurerm backend uses "env:/<workspace>/" prefix for named workspaces
+// by default.
+//
 // Configuration validation rules:
 //   - storage_account_name: 3-24 characters, lowercase alphanumeric only
 //   - container_name: 3-63 characters, lowercase alphanumeric and hyphens,
 //     no consecutive hyphens, cannot start or end with hyphen
-//   - key: non-empty string, the blob name/path
+//   - key: non-empty string, the blob name/path (including workspace path if applicable)
 type AzureBackendConfig struct {
 	// StorageAccountName is the name of the Azure Storage account.
 	// Must be 3-24 characters, lowercase alphanumeric only.
@@ -100,7 +170,15 @@ type AzureBackendConfig struct {
 	ContainerName string
 
 	// Key is the blob name (path) within the container.
-	// This is the path to the terraform.tfstate file.
+	//
+	// For workspace-specific state files, this should include the complete
+	// path including workspace information. The provider treats this as an
+	// opaque string and does not manipulate it.
+	//
+	// Examples:
+	//   - "terraform.tfstate" (default workspace)
+	//   - "env:/dev/terraform.tfstate" (workspace "dev" with env: prefix)
+	//   - "workspaces/staging/terraform.tfstate" (custom workspace pattern)
 	Key string
 }
 
