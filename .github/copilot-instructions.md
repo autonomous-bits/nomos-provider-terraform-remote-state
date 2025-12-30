@@ -4,7 +4,7 @@ Auto-generated from all feature plans. Last updated: 2025-12-30
 
 ## Active Technologies
 
-- Go 1.21+ (001-tfstate-provider)
+- Go 1.25+ (001-tfstate-provider)
 
 ## Project Structure
 
@@ -19,11 +19,10 @@ tests/
 
 ## Code Style
 
-Go 1.21+: Follow standard conventions
+Go 1.25+: Follow standard conventions
 
 ## Recent Changes
 
-- 001-tfstate-provider: Added Go 1.21+
-
+- 001-tfstate-provider: Added Go 1.25+
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->
