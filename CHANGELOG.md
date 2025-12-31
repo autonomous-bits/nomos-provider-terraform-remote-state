@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2025-12-31
+
+### Changed
+- **Project Structure**: Renamed command folder from `cmd/nomos-provider-terraform-remote-state/` to `cmd/provider/` for improved developer experience
+  - Follows Go community conventions for concise command naming
+  - Updated all documentation, build scripts, and CI/CD workflows
+  - Binary name remains unchanged as `nomos-provider-terraform-remote-state`
+  - Git history fully preserved
+
 ## [0.0.1] - 2025-12-31
 
 Initial MVP release of the Nomos Terraform Remote State Provider.
@@ -255,5 +264,6 @@ The following features are intentionally deferred to future releases:
 - **Go**: 1.25+
 - **Nomos**: Compatible with provider-proto v1 contract
 
-[Unreleased]: https://github.com/autonomous-bits/nomos-provider-terraform-remote-state/compare/v0.0.1...HEAD
+[Unreleased]: https://github.com/autonomous-bits/nomos-provider-terraform-remote-state/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/autonomous-bits/nomos-provider-terraform-remote-state/compare/v0.0.1...v0.1.0
 [0.0.1]: https://github.com/autonomous-bits/nomos-provider-terraform-remote-state/releases/tag/v0.0.1
