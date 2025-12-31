@@ -72,9 +72,9 @@ func TestIntegration_MultiWorkspaceProvider(t *testing.T) {
 	for _, ws := range workspaceConfigs {
 		t.Run("init_"+ws.name, func(t *testing.T) {
 			config, err := structpb.NewStruct(map[string]interface{}{
-				"type":      "local",
-				"path":      basePath,
-				"workspace": ws.name,
+				"backend_type": "local",
+				"path":         basePath,
+				"workspace":    ws.name,
 			})
 			if err != nil {
 				t.Fatalf("failed to create config struct: %v", err)
@@ -121,9 +121,9 @@ func TestIntegration_MultiWorkspaceProvider(t *testing.T) {
 			service2 := NewService()
 
 			config, err := structpb.NewStruct(map[string]interface{}{
-				"type":      "local",
-				"path":      basePath,
-				"workspace": ws.name,
+				"backend_type": "local",
+				"path":         basePath,
+				"workspace":    ws.name,
 			})
 			if err != nil {
 				t.Fatalf("failed to create config struct: %v", err)
@@ -179,9 +179,9 @@ func TestIntegration_MultiWorkspaceProvider(t *testing.T) {
 
 		// Initialize with default workspace
 		config1, err := structpb.NewStruct(map[string]interface{}{
-			"type":      "local",
-			"path":      basePath,
-			"workspace": "default",
+			"backend_type": "local",
+			"path":         basePath,
+			"workspace":    "default",
 		})
 		if err != nil {
 			t.Fatalf("failed to create config struct: %v", err)
@@ -215,9 +215,9 @@ func TestIntegration_MultiWorkspaceProvider(t *testing.T) {
 		}
 
 		config2, err := structpb.NewStruct(map[string]interface{}{
-			"type":      "local",
-			"path":      basePath,
-			"workspace": "prod",
+			"backend_type": "local",
+			"path":         basePath,
+			"workspace":    "prod",
 		})
 		if err != nil {
 			t.Fatalf("failed to create config struct: %v", err)
@@ -265,9 +265,9 @@ func TestIntegration_WorkspaceNotFound(t *testing.T) {
 
 	// Try to initialize with non-existent workspace
 	config, err := structpb.NewStruct(map[string]interface{}{
-		"type":      "local",
-		"path":      basePath,
-		"workspace": "nonexistent",
+		"backend_type": "local",
+		"path":         basePath,
+		"workspace":    "nonexistent",
 	})
 	if err != nil {
 		t.Fatalf("failed to create config struct: %v", err)
@@ -340,9 +340,9 @@ func TestIntegration_ConcurrentWorkspaceOperations(t *testing.T) {
 
 			// Initialize
 			config, err := structpb.NewStruct(map[string]interface{}{
-				"type":      "local",
-				"path":      basePath,
-				"workspace": ws,
+				"backend_type": "local",
+				"path":         basePath,
+				"workspace":    ws,
 			})
 			if err != nil {
 				done <- err
@@ -443,9 +443,9 @@ func TestIntegration_WorkspaceWithComplexOutputs(t *testing.T) {
 
 	// Initialize provider with complex workspace
 	config, err := structpb.NewStruct(map[string]interface{}{
-		"type":      "local",
-		"path":      basePath,
-		"workspace": "complex",
+		"backend_type": "local",
+		"path":         basePath,
+		"workspace":    "complex",
 	})
 	if err != nil {
 		t.Fatalf("failed to create config struct: %v", err)
@@ -594,4 +594,310 @@ func createWorkspaceStateFile(t *testing.T, tmpDir, basePath, workspace, outputK
 	if err := os.WriteFile(statePath, []byte(stateData), 0600); err != nil {
 		t.Fatalf("failed to create state file for workspace %s: %v", workspace, err)
 	}
+}
+
+// ==================================================================================
+// Phase 2: Integration Tests - Feature 002-separate-backend-type (T17-T20)
+// ==================================================================================
+
+// TestIntegration_InitWithExplicitBackendType tests Init RPC with explicit backend_type field.
+// [T17] from tasks.md
+func TestIntegration_InitWithExplicitBackendType_Local(t *testing.T) {
+	t.Helper()
+
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	// Create test state file
+	tmpDir := t.TempDir()
+	stateFile := filepath.Join(tmpDir, "terraform.tfstate")
+	stateData := `{
+		"version": 4,
+		"terraform_version": "1.5.0",
+		"serial": 1,
+		"lineage": "explicit-backend-type-test",
+		"outputs": {
+			"test_output": {
+				"value": "explicit-local-backend",
+				"type": "string",
+				"sensitive": false
+			}
+		}
+	}`
+	if err := os.WriteFile(stateFile, []byte(stateData), 0600); err != nil {
+		t.Fatalf("failed to create state file: %v", err)
+	}
+
+	service := NewService()
+	ctx := context.Background()
+
+	// Init with explicit backend_type: "local"
+	config, err := structpb.NewStruct(map[string]interface{}{
+		"backend_type": "local",
+		"path":         stateFile,
+	})
+	if err != nil {
+		t.Fatalf("failed to create config struct: %v", err)
+	}
+
+	resp, err := service.Init(ctx, &pb.InitRequest{
+		Alias:  "explicit-local-test",
+		Config: config,
+	})
+	if err != nil {
+		t.Fatalf("Init() error = %v", err)
+	}
+
+	if resp == nil {
+		t.Fatal("Init() returned nil response")
+	}
+
+	// Verify instance was created with local backend
+	service.mu.RLock()
+	inst, exists := service.instances["explicit-local-test"]
+	service.mu.RUnlock()
+
+	if !exists {
+		t.Fatal("instance was not created")
+	}
+
+	if inst.backend == nil {
+		t.Fatal("backend is nil")
+	}
+
+	// Verify we can fetch from the backend
+	fetchResp, err := service.Fetch(ctx, &pb.FetchRequest{
+		Path: []string{"test_output"},
+	})
+	if err != nil {
+		t.Fatalf("Fetch() error = %v", err)
+	}
+
+	value := fetchResp.Value.AsMap()["value"].(string)
+	if value != "explicit-local-backend" {
+		t.Errorf("Fetch() value = %q, want %q", value, "explicit-local-backend")
+	}
+}
+
+// TestIntegration_InitWithAutoDetectedLocal tests Init RPC with auto-detected local backend.
+// [T18] from tasks.md
+func TestIntegration_InitWithAutoDetectedLocal(t *testing.T) {
+	t.Helper()
+
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	// Create test state file
+	tmpDir := t.TempDir()
+	stateFile := filepath.Join(tmpDir, "terraform.tfstate")
+	stateData := `{
+		"version": 4,
+		"terraform_version": "1.5.0",
+		"serial": 1,
+		"lineage": "auto-detect-local-test",
+		"outputs": {
+			"test_output": {
+				"value": "auto-detected-local",
+				"type": "string",
+				"sensitive": false
+			}
+		}
+	}`
+	if err := os.WriteFile(stateFile, []byte(stateData), 0600); err != nil {
+		t.Fatalf("failed to create state file: %v", err)
+	}
+
+	service := NewService()
+	ctx := context.Background()
+
+	// Init with only path field (no explicit backend_type) - should auto-detect local
+	config, err := structpb.NewStruct(map[string]interface{}{
+		"path": stateFile,
+	})
+	if err != nil {
+		t.Fatalf("failed to create config struct: %v", err)
+	}
+
+	resp, err := service.Init(ctx, &pb.InitRequest{
+		Alias:  "auto-detect-local-test",
+		Config: config,
+	})
+	if err != nil {
+		t.Fatalf("Init() error = %v", err)
+	}
+
+	if resp == nil {
+		t.Fatal("Init() returned nil response")
+	}
+
+	// Verify instance was created with auto-detected local backend
+	service.mu.RLock()
+	inst, exists := service.instances["auto-detect-local-test"]
+	service.mu.RUnlock()
+
+	if !exists {
+		t.Fatal("instance was not created")
+	}
+
+	if inst.backend == nil {
+		t.Fatal("backend is nil")
+	}
+
+	// Verify we can fetch from the backend
+	fetchResp, err := service.Fetch(ctx, &pb.FetchRequest{
+		Path: []string{"test_output"},
+	})
+	if err != nil {
+		t.Fatalf("Fetch() error = %v", err)
+	}
+
+	value := fetchResp.Value.AsMap()["value"].(string)
+	if value != "auto-detected-local" {
+		t.Errorf("Fetch() value = %q, want %q", value, "auto-detected-local")
+	}
+}
+
+// TestIntegration_InitWithExplicitBackendType_Azurerm tests Init RPC with explicit backend_type: "azurerm".
+// [T19] from tasks.md
+//
+// NOTE: This test is skipped by default as it requires Azure credentials.
+// To run this test, set up Azure authentication and remove the t.Skip() call.
+func TestIntegration_InitWithExplicitBackendType_Azurerm(t *testing.T) {
+	t.Helper()
+
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	// Skip by default - requires Azure authentication
+	t.Skip("Skipping Azure backend test - requires authentication. Set up Azure credentials to run.")
+
+	service := NewService()
+	ctx := context.Background()
+
+	// Init with explicit backend_type: "azurerm"
+	config, err := structpb.NewStruct(map[string]interface{}{
+		"backend_type":         "azurerm",
+		"storage_account_name": "testaccount",
+		"container_name":       "tfstate",
+		"key":                  "test/terraform.tfstate",
+	})
+	if err != nil {
+		t.Fatalf("failed to create config struct: %v", err)
+	}
+
+	resp, err := service.Init(ctx, &pb.InitRequest{
+		Alias:  "explicit-azurerm-test",
+		Config: config,
+	})
+
+	// If Azure credentials are not configured, expect an error
+	// If credentials are valid, init should succeed
+	if err != nil {
+		// Check if error is authentication-related (expected without creds)
+		st, ok := status.FromError(err)
+		if !ok {
+			t.Fatalf("Init() error is not a gRPC status: %v", err)
+		}
+
+		// PermissionDenied or Unavailable are expected without Azure creds
+		if st.Code() != codes.PermissionDenied && st.Code() != codes.Unavailable {
+			t.Errorf("Init() unexpected error code = %v, want PermissionDenied or Unavailable", st.Code())
+		}
+
+		t.Logf("Init() failed as expected without Azure credentials: %v", err)
+		return
+	}
+
+	if resp == nil {
+		t.Fatal("Init() returned nil response")
+	}
+
+	// If we get here, Azure credentials are configured - verify instance
+	service.mu.RLock()
+	inst, exists := service.instances["explicit-azurerm-test"]
+	service.mu.RUnlock()
+
+	if !exists {
+		t.Fatal("instance was not created")
+	}
+
+	if inst.backend == nil {
+		t.Fatal("backend is nil")
+	}
+
+	t.Log("Azure backend initialized successfully (credentials configured)")
+}
+
+// TestIntegration_InitWithAutoDetectedAzurerm tests Init RPC with auto-detected azurerm backend.
+// [T20] from tasks.md
+//
+// NOTE: This test is skipped by default as it requires Azure credentials.
+// To run this test, set up Azure authentication and remove the t.Skip() call.
+func TestIntegration_InitWithAutoDetectedAzurerm(t *testing.T) {
+	t.Helper()
+
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	// Skip by default - requires Azure authentication
+	t.Skip("Skipping Azure backend test - requires authentication. Set up Azure credentials to run.")
+
+	service := NewService()
+	ctx := context.Background()
+
+	// Init with only Azure keys (no explicit backend_type) - should auto-detect azurerm
+	config, err := structpb.NewStruct(map[string]interface{}{
+		"storage_account_name": "testaccount",
+		"container_name":       "tfstate",
+		"key":                  "test/terraform.tfstate",
+	})
+	if err != nil {
+		t.Fatalf("failed to create config struct: %v", err)
+	}
+
+	resp, err := service.Init(ctx, &pb.InitRequest{
+		Alias:  "auto-detect-azurerm-test",
+		Config: config,
+	})
+
+	// If Azure credentials are not configured, expect an error
+	// If credentials are valid, init should succeed
+	if err != nil {
+		// Check if error is authentication-related (expected without creds)
+		st, ok := status.FromError(err)
+		if !ok {
+			t.Fatalf("Init() error is not a gRPC status: %v", err)
+		}
+
+		// PermissionDenied or Unavailable are expected without Azure creds
+		if st.Code() != codes.PermissionDenied && st.Code() != codes.Unavailable {
+			t.Errorf("Init() unexpected error code = %v, want PermissionDenied or Unavailable", st.Code())
+		}
+
+		t.Logf("Init() failed as expected without Azure credentials: %v", err)
+		return
+	}
+
+	if resp == nil {
+		t.Fatal("Init() returned nil response")
+	}
+
+	// If we get here, Azure credentials are configured - verify instance
+	service.mu.RLock()
+	inst, exists := service.instances["auto-detect-azurerm-test"]
+	service.mu.RUnlock()
+
+	if !exists {
+		t.Fatal("instance was not created")
+	}
+
+	if inst.backend == nil {
+		t.Fatal("backend is nil")
+	}
+
+	t.Log("Azure backend auto-detected and initialized successfully (credentials configured)")
 }

@@ -85,7 +85,7 @@ The provider automatically resolves workspace paths:
 
 ```csl
 source tfstate = terraform-remote-state {
-  type = "local"
+  backend_type = "local"
   path = "./infra/terraform.tfstate"
   workspace = "default"  // or omit workspace parameter
 }
@@ -96,7 +96,7 @@ source tfstate = terraform-remote-state {
 
 ```csl
 source tfstate = terraform-remote-state {
-  type = "local"
+  backend_type = "local"
   path = "./infra/terraform.tfstate"
   workspace = "production"
 }
@@ -115,7 +115,7 @@ named:       <directory>/terraform.tfstate.d/<workspace>/<filename>
 
 ```csl
 source tfstate_infra = terraform-remote-state {
-  type = "local"
+  backend_type = "local"
   path = "./infrastructure/terraform.tfstate"
   // No workspace parameter = default workspace
 }
@@ -130,7 +130,7 @@ config App {
 **Development Configuration** (`app-dev.csl`):
 ```csl
 source tfstate_infra = terraform-remote-state {
-  type = "local"
+  backend_type = "local"
   path = "./infrastructure/terraform.tfstate"
   workspace = "development"
 }
@@ -145,7 +145,7 @@ config App {
 **Production Configuration** (`app-prod.csl`):
 ```csl
 source tfstate_infra = terraform-remote-state {
-  type = "local"
+  backend_type = "local"
   path = "./infrastructure/terraform.tfstate"
   workspace = "production"
 }
@@ -162,7 +162,7 @@ config App {
 ```csl
 // Pass workspace via Nomos variable
 source tfstate_infra = terraform-remote-state {
-  type = "local"
+  backend_type = "local"
   path = "./infrastructure/terraform.tfstate"
   workspace = var.environment  // Set via --var environment=staging
 }
@@ -223,7 +223,7 @@ terraform {
 ```csl
 // Default workspace
 source tfstate_default = terraform-remote-state {
-  type = "azurerm"
+  backend_type = "azurerm"
   storage_account_name = "mytfstate"
   container_name = "tfstate"
   key = "terraform.tfstate"  // Default workspace
@@ -231,7 +231,7 @@ source tfstate_default = terraform-remote-state {
 
 // Production workspace
 source tfstate_prod = terraform-remote-state {
-  type = "azurerm"
+  backend_type = "azurerm"
   storage_account_name = "mytfstate"
   container_name = "tfstate"
   key = "env:/production/terraform.tfstate"  // Workspace embedded in key
@@ -239,7 +239,7 @@ source tfstate_prod = terraform-remote-state {
 
 // Development workspace
 source tfstate_dev = terraform-remote-state {
-  type = "azurerm"
+  backend_type = "azurerm"
   storage_account_name = "mytfstate"
   container_name = "tfstate"
   key = "env:/development/terraform.tfstate"
@@ -252,14 +252,14 @@ Custom pattern using a `workspaces/` directory:
 
 ```csl
 source tfstate_dev = terraform-remote-state {
-  type = "azurerm"
+  backend_type = "azurerm"
   storage_account_name = "mytfstate"
   container_name = "tfstate"
   key = "workspaces/development/terraform.tfstate"
 }
 
 source tfstate_prod = terraform-remote-state {
-  type = "azurerm"
+  backend_type = "azurerm"
   storage_account_name = "mytfstate"
   container_name = "tfstate"
   key = "workspaces/production/terraform.tfstate"
@@ -272,14 +272,14 @@ Organize by application and environment:
 
 ```csl
 source tfstate_frontend_prod = terraform-remote-state {
-  type = "azurerm"
+  backend_type = "azurerm"
   storage_account_name = "mytfstate"
   container_name = "tfstate"
   key = "apps/frontend/production.tfstate"
 }
 
 source tfstate_backend_prod = terraform-remote-state {
-  type = "azurerm"
+  backend_type = "azurerm"
   storage_account_name = "mytfstate"
   container_name = "tfstate"
   key = "apps/backend/production.tfstate"
@@ -292,7 +292,7 @@ source tfstate_backend_prod = terraform-remote-state {
 ```csl
 // Pass environment via Nomos variable
 source tfstate = terraform-remote-state {
-  type = "azurerm"
+  backend_type = "azurerm"
   storage_account_name = "mytfstate"
   container_name = "tfstate"
   key = "env:/${var.environment}/terraform.tfstate"
@@ -328,7 +328,7 @@ configs/
 **app-dev.csl**:
 ```csl
 source tfstate = terraform-remote-state {
-  type = "local"
+  backend_type = "local"
   path = "./terraform.tfstate"
   workspace = "development"
 }
@@ -346,7 +346,7 @@ Use a single configuration file with environment passed as variable:
 **app.csl**:
 ```csl
 source tfstate = terraform-remote-state {
-  type = "local"
+  backend_type = "local"
   path = "./terraform.tfstate"
   workspace = var.environment
 }
@@ -368,21 +368,21 @@ Different layers of infrastructure in different workspaces:
 ```csl
 // Network layer (production workspace)
 source tfstate_network = terraform-remote-state {
-  type = "local"
+  backend_type = "local"
   path = "./network/terraform.tfstate"
   workspace = "production"
 }
 
 // Application layer (production workspace)
 source tfstate_app = terraform-remote-state {
-  type = "local"
+  backend_type = "local"
   path = "./application/terraform.tfstate"
   workspace = "production"
 }
 
 // Database layer (production workspace)
 source tfstate_database = terraform-remote-state {
-  type = "local"
+  backend_type = "local"
   path = "./database/terraform.tfstate"
   workspace = "production"
 }
@@ -491,7 +491,7 @@ Use Nomos variables for dynamic workspace selection:
 
 ```csl
 source tfstate = terraform-remote-state {
-  type = "local"
+  backend_type = "local"
   path = "./terraform.tfstate"
   workspace = var.environment
 }

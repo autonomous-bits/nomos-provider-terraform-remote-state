@@ -78,8 +78,8 @@ func TestPerformance_InitRPC(t *testing.T) {
 			t.Logf("State file size: %d bytes (%.2f KB)", info.Size(), float64(info.Size())/1024)
 
 			config, err := structpb.NewStruct(map[string]interface{}{
-				"type": "local",
-				"path": stateFile,
+				"backend_type": "local",
+				"path":         stateFile,
 			})
 			if err != nil {
 				t.Fatalf("failed to create config struct: %v", err)
@@ -159,8 +159,8 @@ func TestPerformance_FetchRPC(t *testing.T) {
 			createStateFileWithOutputs(t, stateFile, tc.outputCount)
 
 			config, err := structpb.NewStruct(map[string]interface{}{
-				"type": "local",
-				"path": stateFile,
+				"backend_type": "local",
+				"path":         stateFile,
 			})
 			if err != nil {
 				t.Fatalf("failed to create config struct: %v", err)
@@ -329,8 +329,8 @@ func TestPerformance_ConcurrentFetch(t *testing.T) {
 
 	// Initialize provider
 	config, err := structpb.NewStruct(map[string]interface{}{
-		"type": "local",
-		"path": stateFile,
+		"backend_type": "local",
+		"path":         stateFile,
 	})
 	if err != nil {
 		t.Fatalf("failed to create config struct: %v", err)
@@ -401,8 +401,8 @@ func BenchmarkInitLocalBackend(b *testing.B) {
 	createStateFileWithOutputs(b, stateFile, 100)
 
 	config, err := structpb.NewStruct(map[string]interface{}{
-		"type": "local",
-		"path": stateFile,
+		"backend_type": "local",
+		"path":         stateFile,
 	})
 	if err != nil {
 		b.Fatalf("failed to create config struct: %v", err)
@@ -444,8 +444,8 @@ func BenchmarkFetchLocalBackend(b *testing.B) {
 			createStateFileWithOutputs(b, stateFile, size.outputCount)
 
 			config, err := structpb.NewStruct(map[string]interface{}{
-				"type": "local",
-				"path": stateFile,
+				"backend_type": "local",
+				"path":         stateFile,
 			})
 			if err != nil {
 				b.Fatalf("failed to create config struct: %v", err)
@@ -527,8 +527,8 @@ func BenchmarkStateFileParsing(b *testing.B) {
 
 			service := NewService()
 			config, err := structpb.NewStruct(map[string]interface{}{
-				"type": "local",
-				"path": stateFile,
+				"backend_type": "local",
+				"path":         stateFile,
 			})
 			if err != nil {
 				b.Fatalf("failed to create config struct: %v", err)

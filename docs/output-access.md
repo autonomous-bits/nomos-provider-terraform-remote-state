@@ -30,7 +30,7 @@ Output paths consist of a single element: the output name.
 
 ```csl
 source tfstate = terraform-remote-state {
-  type = "local"
+  backend_type = "local"
   path = "./terraform.tfstate"
 }
 
@@ -102,7 +102,7 @@ output "region" {
 **Nomos Usage**:
 ```csl
 source tfstate = terraform-remote-state {
-  type = "local"
+  backend_type = "local"
   path = "./terraform.tfstate"
 }
 
@@ -393,19 +393,19 @@ Access outputs from multiple Terraform states:
 ```csl
 // Network infrastructure
 source tfstate_network = terraform-remote-state {
-  type = "local"
+  backend_type = "local"
   path = "./network/terraform.tfstate"
 }
 
 // Database infrastructure
 source tfstate_database = terraform-remote-state {
-  type = "local"
+  backend_type = "local"
   path = "./database/terraform.tfstate"
 }
 
 // Application infrastructure
 source tfstate_app = terraform-remote-state {
-  type = "azurerm"
+  backend_type = "azurerm"
   storage_account_name = "mytfstate"
   container_name = "tfstate"
   key = "app/terraform.tfstate"
@@ -430,7 +430,7 @@ Use output values for conditional logic:
 
 ```csl
 source tfstate = terraform-remote-state {
-  type = "local"
+  backend_type = "local"
   path = "./terraform.tfstate"
 }
 
@@ -456,7 +456,7 @@ Use outputs for dynamic naming:
 
 ```csl
 source tfstate = terraform-remote-state {
-  type = "local"
+  backend_type = "local"
   path = "./terraform.tfstate"
 }
 
@@ -476,7 +476,7 @@ Transform outputs as needed:
 
 ```csl
 source tfstate = terraform-remote-state {
-  type = "local"
+  backend_type = "local"
   path = "./terraform.tfstate"
 }
 
@@ -539,7 +539,7 @@ output "database_port" {
 **Nomos Usage**:
 ```csl
 source tfstate = terraform-remote-state {
-  type = "local"
+  backend_type = "local"
   path = "./terraform.tfstate"
 }
 
