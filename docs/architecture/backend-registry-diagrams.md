@@ -382,7 +382,7 @@ Project Structure:
 │       • Register(), Get(), List() signatures
 │       • Package documentation with examples
 │
-└── .github/architecture/ ─────────► NEW DIRECTORY
+└── docs/architecture/ ─────────► NEW DIRECTORY
     ├── backend-registry-pattern.md
     │   • Complete architecture specification
     │   • Component design
