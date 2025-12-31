@@ -39,9 +39,9 @@ func TestInit_LocalBackend(t *testing.T) {
 
 	// Create config struct
 	config, err := structpb.NewStruct(map[string]interface{}{
-		"type":      "local",
-		"path":      stateFile,
-		"workspace": "default",
+		"backend_type": "local",
+		"path":         stateFile,
+		"workspace":    "default",
 	})
 	if err != nil {
 		t.Fatalf("failed to create config struct: %v", err)
@@ -84,7 +84,7 @@ func TestInit_AzureBackend(t *testing.T) {
 	ctx := context.Background()
 
 	config, err := structpb.NewStruct(map[string]interface{}{
-		"type":                 "azurerm",
+		"backend_type":         "azurerm",
 		"storage_account_name": "testaccount",
 		"container_name":       "tfstate",
 		"key":                  "terraform.tfstate",
@@ -134,10 +134,10 @@ func TestInit_InvalidConfig(t *testing.T) {
 			wantCode: codes.InvalidArgument,
 		},
 		{
-			name:  "missing type",
+			name:  "missing backend_type and cannot auto-detect",
 			alias: "test",
 			config: map[string]interface{}{
-				"path": "/some/path",
+				"workspace": "default",
 			},
 			wantCode: codes.InvalidArgument,
 		},
@@ -145,7 +145,7 @@ func TestInit_InvalidConfig(t *testing.T) {
 			name:  "unsupported backend type",
 			alias: "test",
 			config: map[string]interface{}{
-				"type": "s3",
+				"backend_type": "s3",
 			},
 			wantCode:   codes.InvalidArgument,
 			wantSubstr: "unsupported",
@@ -154,8 +154,8 @@ func TestInit_InvalidConfig(t *testing.T) {
 			name:  "empty alias",
 			alias: "",
 			config: map[string]interface{}{
-				"type": "local",
-				"path": "/some/path",
+				"backend_type": "local",
+				"path":         "/some/path",
 			},
 			wantCode: codes.InvalidArgument,
 		},
@@ -163,8 +163,8 @@ func TestInit_InvalidConfig(t *testing.T) {
 			name:  "invalid local config - empty path",
 			alias: "test",
 			config: map[string]interface{}{
-				"type": "local",
-				"path": "",
+				"backend_type": "local",
+				"path":         "",
 			},
 			wantCode: codes.InvalidArgument,
 		},
@@ -172,7 +172,7 @@ func TestInit_InvalidConfig(t *testing.T) {
 			name:  "invalid azure config - invalid storage account",
 			alias: "test",
 			config: map[string]interface{}{
-				"type":                 "azurerm",
+				"backend_type":         "azurerm",
 				"storage_account_name": "Invalid",
 				"container_name":       "tfstate",
 				"key":                  "terraform.tfstate",
@@ -247,8 +247,8 @@ func TestInit_DuplicateAlias(t *testing.T) {
 	}
 
 	config, err := structpb.NewStruct(map[string]interface{}{
-		"type": "local",
-		"path": stateFile,
+		"backend_type": "local",
+		"path":         stateFile,
 	})
 	if err != nil {
 		t.Fatalf("failed to create config struct: %v", err)
@@ -320,8 +320,8 @@ func TestFetch(t *testing.T) {
 
 	// Initialize provider
 	config, err := structpb.NewStruct(map[string]interface{}{
-		"type": "local",
-		"path": stateFile,
+		"backend_type": "local",
+		"path":         stateFile,
 	})
 	if err != nil {
 		t.Fatalf("failed to create config struct: %v", err)

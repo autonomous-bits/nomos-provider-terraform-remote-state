@@ -86,7 +86,7 @@ File: `app.csl`
 ```csl
 // Declare Terraform state as external source
 source tfstate_infra = terraform-remote-state {
-  type = "local"
+  backend_type = "local"
   path = "./infra/terraform.tfstate"
 }
 
@@ -136,7 +136,7 @@ infra/
 File: `app-dev.csl`
 ```csl
 source tfstate_infra = terraform-remote-state {
-  type = "local"
+  backend_type = "local"
   path = "./infra/terraform.tfstate"
   workspace = "dev"
 }
@@ -152,7 +152,7 @@ config MyApp {
 File: `app-prod.csl`
 ```csl
 source tfstate_infra = terraform-remote-state {
-  type = "local"
+  backend_type = "local"
   path = "./infra/terraform.tfstate"
   workspace = "prod"
 }
@@ -190,7 +190,7 @@ export AZURE_CLIENT_SECRET="your-client-secret"
 File: `app.csl`
 ```csl
 source tfstate_infra = terraform-remote-state {
-  type = "azurerm"
+  backend_type = "azurerm"
   storage_account_name = "mytfstate"
   container_name = "tfstate"
   key = "prod/app/terraform.tfstate"
@@ -231,7 +231,7 @@ mytfstate (storage account)
 
 ```csl
 source tfstate_infra = terraform-remote-state {
-  type = "azurerm"
+  backend_type = "azurerm"
   storage_account_name = "mytfstate"
   container_name = "tfstate"
   key = "env:/dev/terraform.tfstate"
@@ -257,19 +257,19 @@ File: `app.csl`
 ```csl
 // Network infrastructure state
 source tfstate_network = terraform-remote-state {
-  type = "local"
+  backend_type = "local"
   path = "./terraform/network/terraform.tfstate"
 }
 
 // Database infrastructure state
 source tfstate_database = terraform-remote-state {
-  type = "local"
+  backend_type = "local"
   path = "./terraform/database/terraform.tfstate"
 }
 
 // App infrastructure state (Azure)
 source tfstate_app = terraform-remote-state {
-  type = "azurerm"
+  backend_type = "azurerm"
   storage_account_name = "mytfstate"
   container_name = "tfstate"
   key = "app/terraform.tfstate"
@@ -298,7 +298,7 @@ config MyApp {
 
 ```csl
 source tfstate = terraform-remote-state {
-  type = "local"
+  backend_type = "local"
   path = "./terraform.tfstate"
 }
 
@@ -318,7 +318,7 @@ config App {
 
 ```csl
 source tfstate = terraform-remote-state {
-  type = "local"
+  backend_type = "local"
   path = "./terraform.tfstate"
 }
 
@@ -338,7 +338,7 @@ config App {
 
 ```csl
 source tfstate = terraform-remote-state {
-  type = "local"
+  backend_type = "local"
   path = "./terraform.tfstate"
 }
 
@@ -356,7 +356,7 @@ config App {
 
 ```csl
 source tfstate = terraform-remote-state {
-  type = "local"
+  backend_type = "local"
   path = "./terraform.tfstate"
 }
 
@@ -385,7 +385,7 @@ config App {
 ```csl
 // Try absolute path
 source tfstate = terraform-remote-state {
-  type = "local"
+  backend_type = "local"
   path = "/absolute/path/to/terraform.tfstate"
 }
 ```
@@ -465,7 +465,7 @@ chmod 644 ./terraform.tfstate
 **Bad**:
 ```csl
 source tfstate = terraform-remote-state {
-  type = "local"
+  backend_type = "local"
   path = "./terraform.tfstate"  // Relative to CWD
 }
 ```
@@ -473,7 +473,7 @@ source tfstate = terraform-remote-state {
 **Good**:
 ```csl
 source tfstate = terraform-remote-state {
-  type = "local"
+  backend_type = "local"
   path = "/var/terraform/prod/terraform.tfstate"
 }
 ```
@@ -483,7 +483,7 @@ source tfstate = terraform-remote-state {
 **Bad**:
 ```csl
 source tfstate = terraform-remote-state {
-  type = "azurerm"
+  backend_type = "azurerm"
   // NEVER put credentials in config!
   azure_client_secret = "secret-here"  // ❌ WRONG
 }
@@ -508,7 +508,7 @@ app-prod.csl
 ```csl
 // Pass workspace as Nomos variable
 source tfstate = terraform-remote-state {
-  type = "local"
+  backend_type = "local"
   path = "./terraform.tfstate"
   workspace = var.environment  // dev, staging, prod
 }
@@ -546,7 +546,7 @@ Add comments to Nomos config documenting expected Terraform outputs:
 // - database_config (object): Database connection details
 
 source tfstate = terraform-remote-state {
-  type = "local"
+  backend_type = "local"
   path = "./infra/terraform.tfstate"
 }
 ```
@@ -642,7 +642,7 @@ Find more examples at: `https://github.com/autonomous-bits/nomos-examples/tree/m
 
 ```csl
 source <name> = terraform-remote-state {
-  type = "local"
+  backend_type = "local"
   path = "<path-to-tfstate>"
   workspace = "<workspace-name>"  // optional, default: "default"
 }
@@ -652,7 +652,7 @@ source <name> = terraform-remote-state {
 
 ```csl
 source <name> = terraform-remote-state {
-  type = "azurerm"
+  backend_type = "azurerm"
   storage_account_name = "<storage-account>"
   container_name = "<container>"
   key = "<blob-path>"

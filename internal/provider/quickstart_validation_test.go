@@ -101,8 +101,8 @@ func TestQuickstart_LocalBackendSimple(t *testing.T) {
 	// Test 3: Init RPC with local backend
 	t.Run("init_local_backend", func(t *testing.T) {
 		config, err := structpb.NewStruct(map[string]interface{}{
-			"type": "local",
-			"path": stateFile,
+			"backend_type": "local",
+			"path":         stateFile,
 		})
 		if err != nil {
 			t.Fatalf("failed to create config struct: %v", err)
@@ -308,9 +308,9 @@ func TestQuickstart_LocalBackendWithWorkspace(t *testing.T) {
 
 			// Init with specific workspace
 			config, err := structpb.NewStruct(map[string]interface{}{
-				"type":      "local",
-				"path":      basePath,
-				"workspace": ws.name,
+				"backend_type": "local",
+				"path":         basePath,
+				"workspace":    ws.name,
 			})
 			if err != nil {
 				t.Fatalf("failed to create config struct: %v", err)
@@ -359,9 +359,9 @@ func TestQuickstart_LocalBackendWithWorkspace(t *testing.T) {
 		service := NewService()
 
 		config, err := structpb.NewStruct(map[string]interface{}{
-			"type":      "local",
-			"path":      basePath,
-			"workspace": "default",
+			"backend_type": "local",
+			"path":         basePath,
+			"workspace":    "default",
 		})
 		if err != nil {
 			t.Fatalf("failed to create config struct: %v", err)
@@ -411,8 +411,8 @@ func TestQuickstart_ErrorScenarios(t *testing.T) {
 		service := NewService()
 
 		config, err := structpb.NewStruct(map[string]interface{}{
-			"type": "local",
-			"path": "/nonexistent/terraform.tfstate",
+			"backend_type": "local",
+			"path":         "/nonexistent/terraform.tfstate",
 		})
 		if err != nil {
 			t.Fatalf("failed to create config struct: %v", err)
@@ -470,8 +470,8 @@ func TestQuickstart_ErrorScenarios(t *testing.T) {
 		}
 
 		config, err := structpb.NewStruct(map[string]interface{}{
-			"type": "local",
-			"path": stateFile,
+			"backend_type": "local",
+			"path":         stateFile,
 		})
 		if err != nil {
 			t.Fatalf("failed to create config struct: %v", err)
@@ -530,8 +530,8 @@ func TestQuickstart_ErrorScenarios(t *testing.T) {
 		}
 
 		config, err := structpb.NewStruct(map[string]interface{}{
-			"type": "local",
-			"path": stateFile,
+			"backend_type": "local",
+			"path":         stateFile,
 		})
 		if err != nil {
 			t.Fatalf("failed to create config struct: %v", err)
@@ -575,8 +575,8 @@ func TestQuickstart_ErrorScenarios(t *testing.T) {
 		service := NewService()
 
 		config, err := structpb.NewStruct(map[string]interface{}{
-			"type": "local",
-			"path": "",
+			"backend_type": "local",
+			"path":         "",
 		})
 		if err != nil {
 			t.Fatalf("failed to create config struct: %v", err)
@@ -626,8 +626,8 @@ func TestQuickstart_ErrorScenarios(t *testing.T) {
 		}
 
 		config, err := structpb.NewStruct(map[string]interface{}{
-			"type": "local",
-			"path": stateFile,
+			"backend_type": "local",
+			"path":         stateFile,
 		})
 		if err != nil {
 			t.Fatalf("failed to create config struct: %v", err)
@@ -741,8 +741,8 @@ func TestQuickstart_MultipleStateSources(t *testing.T) {
 
 	// Initialize network provider
 	networkConfig, err := structpb.NewStruct(map[string]interface{}{
-		"type": "local",
-		"path": networkStateFile,
+		"backend_type": "local",
+		"path":         networkStateFile,
 	})
 	if err != nil {
 		t.Fatalf("failed to create network config: %v", err)
@@ -758,8 +758,8 @@ func TestQuickstart_MultipleStateSources(t *testing.T) {
 
 	// Initialize database provider
 	databaseConfig, err := structpb.NewStruct(map[string]interface{}{
-		"type": "local",
-		"path": databaseStateFile,
+		"backend_type": "local",
+		"path":         databaseStateFile,
 	})
 	if err != nil {
 		t.Fatalf("failed to create database config: %v", err)
@@ -866,8 +866,8 @@ func TestQuickstart_InitTimingRequirement(t *testing.T) {
 	}
 
 	config, err := structpb.NewStruct(map[string]interface{}{
-		"type": "local",
-		"path": stateFile,
+		"backend_type": "local",
+		"path":         stateFile,
 	})
 	if err != nil {
 		t.Fatalf("failed to create config struct: %v", err)
