@@ -17,34 +17,34 @@ func TestParseConfig(t *testing.T) {
 		{
 			name: "valid local backend config",
 			configMap: map[string]interface{}{
-				"type":      "local",
-				"path":      "terraform.tfstate",
-				"workspace": "default",
+				"backend_type": "local",
+				"path":         "terraform.tfstate",
+				"workspace":    "default",
 			},
 			wantType:    "local",
 			wantErr:     nil,
-			wantRawKeys: []string{"type", "path", "workspace"},
+			wantRawKeys: []string{"backend_type", "path", "workspace"},
 		},
 		{
 			name: "valid azurerm backend config",
 			configMap: map[string]interface{}{
-				"type":                 "azurerm",
+				"backend_type":         "azurerm",
 				"storage_account_name": "mystorageacct",
 				"container_name":       "tfstate",
 				"key":                  "terraform.tfstate",
 			},
 			wantType:    "azurerm",
 			wantErr:     nil,
-			wantRawKeys: []string{"type", "storage_account_name", "container_name", "key"},
+			wantRawKeys: []string{"backend_type", "storage_account_name", "container_name", "key"},
 		},
 		{
-			name: "minimal valid config",
+			name: "minimal valid config - auto-detect local from path",
 			configMap: map[string]interface{}{
-				"type": "local",
+				"path": "terraform.tfstate",
 			},
 			wantType:    "local",
 			wantErr:     nil,
-			wantRawKeys: []string{"type"},
+			wantRawKeys: []string{"path"},
 		},
 		{
 			name:      "nil config map",
@@ -56,61 +56,63 @@ func TestParseConfig(t *testing.T) {
 			name:      "empty config map",
 			configMap: map[string]interface{}{},
 			wantType:  "",
-			wantErr:   ErrMissingType,
+			wantErr:   ErrCannotDetectBackend,
 		},
 		{
-			name: "missing type field",
+			name: "auto-detect local from path field",
 			configMap: map[string]interface{}{
 				"path": "terraform.tfstate",
 			},
-			wantType: "",
-			wantErr:  ErrMissingType,
+			wantType:    "local",
+			wantErr:     nil,
+			wantRawKeys: []string{"path"},
 		},
 		{
-			name: "type field is not string - integer",
+			name: "type field ignored - no detection possible",
 			configMap: map[string]interface{}{
 				"type": 123,
 			},
 			wantType: "",
-			wantErr:  ErrInvalidType,
+			wantErr:  ErrCannotDetectBackend,
 		},
 		{
-			name: "type field is not string - boolean",
+			name: "type field ignored - boolean value",
 			configMap: map[string]interface{}{
 				"type": true,
 			},
 			wantType: "",
-			wantErr:  ErrInvalidType,
+			wantErr:  ErrCannotDetectBackend,
 		},
 		{
-			name: "type field is not string - map",
+			name: "type field ignored - map value",
 			configMap: map[string]interface{}{
 				"type": map[string]string{"backend": "local"},
 			},
 			wantType: "",
-			wantErr:  ErrInvalidType,
+			wantErr:  ErrCannotDetectBackend,
 		},
 		{
-			name: "type field is empty string",
+			name: "type field ignored - empty string",
 			configMap: map[string]interface{}{
 				"type": "",
 			},
 			wantType: "",
-			wantErr:  ErrInvalidType,
+			wantErr:  ErrCannotDetectBackend,
 		},
 		{
-			name: "type field with whitespace only",
+			name: "type field ignored - whitespace only",
 			configMap: map[string]interface{}{
 				"type": "   ",
 			},
 			wantType: "",
-			wantErr:  ErrUnsupportedBackendType, // After trimming, becomes empty and fails allowlist
+			wantErr:  ErrCannotDetectBackend,
 		},
 		{
-			name: "config with additional fields preserved",
+			name: "config with additional fields preserved - auto-detect azurerm",
 			configMap: map[string]interface{}{
-				"type":         "azurerm",
-				"custom_field": "custom_value",
+				"storage_account_name": "mystorageacct",
+				"container_name":       "tfstate",
+				"custom_field":         "custom_value",
 				"nested": map[string]interface{}{
 					"key": "value",
 				},
@@ -118,7 +120,7 @@ func TestParseConfig(t *testing.T) {
 			},
 			wantType:    "azurerm",
 			wantErr:     nil,
-			wantRawKeys: []string{"type", "custom_field", "nested", "array"},
+			wantRawKeys: []string{"storage_account_name", "container_name", "custom_field", "nested", "array"},
 		},
 	}
 
@@ -200,7 +202,7 @@ func TestConfig_Type(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &Config{
 				backendType: tt.backendType,
-				raw:         map[string]interface{}{"type": tt.backendType},
+				raw:         map[string]interface{}{"backend_type": tt.backendType},
 			}
 
 			if got := c.Type(); got != tt.backendType {
@@ -218,14 +220,14 @@ func TestConfig_Raw(t *testing.T) {
 		{
 			name: "simple config",
 			configMap: map[string]interface{}{
-				"type": "local",
-				"path": "terraform.tfstate",
+				"backend_type": "local",
+				"path":         "terraform.tfstate",
 			},
 		},
 		{
 			name: "complex config with nested structures",
 			configMap: map[string]interface{}{
-				"type": "azurerm",
+				"backend_type": "azurerm",
 				"nested": map[string]interface{}{
 					"key": "value",
 				},
@@ -301,8 +303,8 @@ func TestConfig_Workspace(t *testing.T) {
 				backendType: "local",
 				workspace:   tt.workspace,
 				raw: map[string]interface{}{
-					"type":      "local",
-					"workspace": tt.workspace,
+					"backend_type": "local",
+					"workspace":    tt.workspace,
 				},
 			}
 
@@ -318,8 +320,8 @@ func TestBackendConfigInterface(t *testing.T) {
 	var _ BackendConfig = (*Config)(nil)
 
 	configMap := map[string]interface{}{
-		"type": "local",
-		"path": "terraform.tfstate",
+		"backend_type": "local",
+		"path":         "terraform.tfstate",
 	}
 
 	config, err := ParseConfig(configMap)
@@ -357,14 +359,14 @@ func TestParseConfig_ErrorMessages(t *testing.T) {
 		{
 			name: "invalid type - integer",
 			configMap: map[string]interface{}{
-				"type": 123,
+				"backend_type": 123,
 			},
 			wantErrString: "invalid type field",
 		},
 		{
 			name: "empty type string",
 			configMap: map[string]interface{}{
-				"type": "",
+				"backend_type": "",
 			},
 			wantErrString: "invalid type field",
 		},
@@ -387,7 +389,7 @@ func TestParseConfig_ErrorMessages(t *testing.T) {
 
 func BenchmarkParseConfig(b *testing.B) {
 	configMap := map[string]interface{}{
-		"type":                 "azurerm",
+		"backend_type":         "azurerm",
 		"storage_account_name": "mystorageacct",
 		"container_name":       "tfstate",
 		"key":                  "terraform.tfstate",
@@ -407,7 +409,7 @@ func BenchmarkParseConfig(b *testing.B) {
 
 func BenchmarkParseConfig_Error(b *testing.B) {
 	configMap := map[string]interface{}{
-		"type": 123,
+		"backend_type": 123,
 	}
 
 	b.ReportAllocs()
@@ -429,28 +431,28 @@ func TestParseConfig_SecurityValidation(t *testing.T) {
 		{
 			name: "unsupported backend type - s3",
 			configMap: map[string]interface{}{
-				"type": "s3",
+				"backend_type": "s3",
 			},
 			wantErr: ErrUnsupportedBackendType,
 		},
 		{
 			name: "unsupported backend type - gcs",
 			configMap: map[string]interface{}{
-				"type": "gcs",
+				"backend_type": "gcs",
 			},
 			wantErr: ErrUnsupportedBackendType,
 		},
 		{
 			name: "unsupported backend type - consul",
 			configMap: map[string]interface{}{
-				"type": "consul",
+				"backend_type": "consul",
 			},
 			wantErr: ErrUnsupportedBackendType,
 		},
 		{
 			name: "backend type with control characters",
 			configMap: map[string]interface{}{
-				"type": "local\\x00",
+				"backend_type": "local\\x00",
 			},
 			wantErr: ErrUnsupportedBackendType, // After sanitization, "local\\x00" won't match allowlist
 		},
@@ -459,7 +461,6 @@ func TestParseConfig_SecurityValidation(t *testing.T) {
 		{
 			name: "workspace with path traversal - dot dot",
 			configMap: map[string]interface{}{
-				"type":      "local",
 				"path":      "terraform.tfstate",
 				"workspace": "../etc/passwd",
 			},
@@ -468,7 +469,6 @@ func TestParseConfig_SecurityValidation(t *testing.T) {
 		{
 			name: "workspace with path traversal - encoded",
 			configMap: map[string]interface{}{
-				"type":      "local",
 				"path":      "terraform.tfstate",
 				"workspace": "..%2F..%2Fetc%2Fpasswd",
 			},
@@ -477,7 +477,6 @@ func TestParseConfig_SecurityValidation(t *testing.T) {
 		{
 			name: "workspace with forward slash",
 			configMap: map[string]interface{}{
-				"type":      "local",
 				"path":      "terraform.tfstate",
 				"workspace": "prod/staging",
 			},
@@ -486,7 +485,6 @@ func TestParseConfig_SecurityValidation(t *testing.T) {
 		{
 			name: "workspace with backslash",
 			configMap: map[string]interface{}{
-				"type":      "local",
 				"path":      "terraform.tfstate",
 				"workspace": "prod\\\\staging",
 			},
@@ -495,18 +493,18 @@ func TestParseConfig_SecurityValidation(t *testing.T) {
 		{
 			name: "workspace with null byte",
 			configMap: map[string]interface{}{
-				"type":      "local",
-				"path":      "terraform.tfstate",
-				"workspace": "prod\\x00",
+				"backend_type": "local",
+				"path":         "terraform.tfstate",
+				"workspace":    "prod\\x00",
 			},
 			wantErr: ErrInvalidWorkspace,
 		},
 		{
 			name: "workspace exceeding max length",
 			configMap: map[string]interface{}{
-				"type":      "local",
-				"path":      "terraform.tfstate",
-				"workspace": strings.Repeat("a", 101), // maxWorkspaceNameLength is 100
+				"backend_type": "local",
+				"path":         "terraform.tfstate",
+				"workspace":    strings.Repeat("a", 101), // maxWorkspaceNameLength is 100
 			},
 			wantErr: ErrInvalidWorkspace,
 		},
@@ -515,40 +513,40 @@ func TestParseConfig_SecurityValidation(t *testing.T) {
 		{
 			name: "local path with path traversal",
 			configMap: map[string]interface{}{
-				"type": "local",
-				"path": "../../etc/passwd",
+				"backend_type": "local",
+				"path":         "../../etc/passwd",
 			},
 			wantErr: ErrPathTraversal,
 		},
 		{
 			name: "local path with encoded path traversal",
 			configMap: map[string]interface{}{
-				"type": "local",
-				"path": "..%2F..%2Fetc%2Fpasswd",
+				"backend_type": "local",
+				"path":         "..%2F..%2Fetc%2Fpasswd",
 			},
 			wantErr: ErrPathTraversal,
 		},
 		{
 			name: "local path with backslashes",
 			configMap: map[string]interface{}{
-				"type": "local",
-				"path": "C:\\\\Windows\\\\System32\\\\config",
+				"backend_type": "local",
+				"path":         "C:\\\\Windows\\\\System32\\\\config",
 			},
 			wantErr: ErrInvalidPath,
 		},
 		{
 			name: "local path with null byte",
 			configMap: map[string]interface{}{
-				"type": "local",
-				"path": "terraform\\x00.tfstate",
+				"backend_type": "local",
+				"path":         "terraform\\x00.tfstate",
 			},
 			wantErr: ErrInvalidPath,
 		},
 		{
 			name: "local path exceeding max length",
 			configMap: map[string]interface{}{
-				"type": "local",
-				"path": strings.Repeat("a", 1025), // maxPathLength is 1024
+				"backend_type": "local",
+				"path":         strings.Repeat("a", 1025), // maxPathLength is 1024
 			},
 			wantErr: ErrInvalidPath,
 		},
@@ -557,7 +555,7 @@ func TestParseConfig_SecurityValidation(t *testing.T) {
 		{
 			name: "azure storage account with uppercase",
 			configMap: map[string]interface{}{
-				"type":                 "azurerm",
+				"backend_type":         "azurerm",
 				"storage_account_name": "MyStorageAccount",
 				"container_name":       "tfstate",
 				"key":                  "terraform.tfstate",
@@ -567,7 +565,7 @@ func TestParseConfig_SecurityValidation(t *testing.T) {
 		{
 			name: "azure storage account too short",
 			configMap: map[string]interface{}{
-				"type":                 "azurerm",
+				"backend_type":         "azurerm",
 				"storage_account_name": "ab",
 				"container_name":       "tfstate",
 				"key":                  "terraform.tfstate",
@@ -577,7 +575,7 @@ func TestParseConfig_SecurityValidation(t *testing.T) {
 		{
 			name: "azure storage account too long",
 			configMap: map[string]interface{}{
-				"type":                 "azurerm",
+				"backend_type":         "azurerm",
 				"storage_account_name": "abcdefghijklmnopqrstuvwxyz",
 				"container_name":       "tfstate",
 				"key":                  "terraform.tfstate",
@@ -587,7 +585,7 @@ func TestParseConfig_SecurityValidation(t *testing.T) {
 		{
 			name: "azure storage account with special chars",
 			configMap: map[string]interface{}{
-				"type":                 "azurerm",
+				"backend_type":         "azurerm",
 				"storage_account_name": "my-storage-account",
 				"container_name":       "tfstate",
 				"key":                  "terraform.tfstate",
@@ -597,7 +595,7 @@ func TestParseConfig_SecurityValidation(t *testing.T) {
 		{
 			name: "azure container name with uppercase",
 			configMap: map[string]interface{}{
-				"type":                 "azurerm",
+				"backend_type":         "azurerm",
 				"storage_account_name": "mystorageacct",
 				"container_name":       "TfState",
 				"key":                  "terraform.tfstate",
@@ -607,7 +605,7 @@ func TestParseConfig_SecurityValidation(t *testing.T) {
 		{
 			name: "azure container name too short",
 			configMap: map[string]interface{}{
-				"type":                 "azurerm",
+				"backend_type":         "azurerm",
 				"storage_account_name": "mystorageacct",
 				"container_name":       "ab",
 				"key":                  "terraform.tfstate",
@@ -617,7 +615,7 @@ func TestParseConfig_SecurityValidation(t *testing.T) {
 		{
 			name: "azure container name with consecutive hyphens",
 			configMap: map[string]interface{}{
-				"type":                 "azurerm",
+				"backend_type":         "azurerm",
 				"storage_account_name": "mystorageacct",
 				"container_name":       "tf--state",
 				"key":                  "terraform.tfstate",
@@ -627,7 +625,7 @@ func TestParseConfig_SecurityValidation(t *testing.T) {
 		{
 			name: "azure blob key with path traversal",
 			configMap: map[string]interface{}{
-				"type":                 "azurerm",
+				"backend_type":         "azurerm",
 				"storage_account_name": "mystorageacct",
 				"container_name":       "tfstate",
 				"key":                  "../../secrets.tfstate",
@@ -637,7 +635,7 @@ func TestParseConfig_SecurityValidation(t *testing.T) {
 		{
 			name: "azure blob key with backslash",
 			configMap: map[string]interface{}{
-				"type":                 "azurerm",
+				"backend_type":         "azurerm",
 				"storage_account_name": "mystorageacct",
 				"container_name":       "tfstate",
 				"key":                  "dir\\\\terraform.tfstate",
@@ -647,7 +645,7 @@ func TestParseConfig_SecurityValidation(t *testing.T) {
 		{
 			name: "azure blob key starting with slash",
 			configMap: map[string]interface{}{
-				"type":                 "azurerm",
+				"backend_type":         "azurerm",
 				"storage_account_name": "mystorageacct",
 				"container_name":       "tfstate",
 				"key":                  "/terraform.tfstate",
@@ -657,7 +655,7 @@ func TestParseConfig_SecurityValidation(t *testing.T) {
 		{
 			name: "azure blob key ending with slash",
 			configMap: map[string]interface{}{
-				"type":                 "azurerm",
+				"backend_type":         "azurerm",
 				"storage_account_name": "mystorageacct",
 				"container_name":       "tfstate",
 				"key":                  "terraform.tfstate/",
@@ -667,7 +665,7 @@ func TestParseConfig_SecurityValidation(t *testing.T) {
 		{
 			name: "azure blob key with null byte",
 			configMap: map[string]interface{}{
-				"type":                 "azurerm",
+				"backend_type":         "azurerm",
 				"storage_account_name": "mystorageacct",
 				"container_name":       "tfstate",
 				"key":                  "terraform\\x00.tfstate",
@@ -677,7 +675,7 @@ func TestParseConfig_SecurityValidation(t *testing.T) {
 		{
 			name: "azure blob key exceeding max length",
 			configMap: map[string]interface{}{
-				"type":                 "azurerm",
+				"backend_type":         "azurerm",
 				"storage_account_name": "mystorageacct",
 				"container_name":       "tfstate",
 				"key":                  strings.Repeat("a", 1025), // maxBlobKeyLength is 1024
@@ -717,31 +715,32 @@ func TestParseConfig_ValidInputsSanitized(t *testing.T) {
 		{
 			name: "backend type with whitespace trimmed",
 			configMap: map[string]interface{}{
-				"type": "  local  ",
+				"backend_type": "  local  ",
+				"path":         "terraform.tfstate",
 			},
 			wantType: "local",
 		},
 		{
 			name: "workspace with whitespace trimmed",
 			configMap: map[string]interface{}{
-				"type":      "local",
-				"path":      "terraform.tfstate",
-				"workspace": "  production  ",
+				"backend_type": "local",
+				"path":         "terraform.tfstate",
+				"workspace":    "  production  ",
 			},
 			wantType: "local",
 		},
 		{
 			name: "valid local backend",
 			configMap: map[string]interface{}{
-				"type": "local",
-				"path": "terraform.tfstate",
+				"backend_type": "local",
+				"path":         "terraform.tfstate",
 			},
 			wantType: "local",
 		},
 		{
 			name: "valid azure backend",
 			configMap: map[string]interface{}{
-				"type":                 "azurerm",
+				"backend_type":         "azurerm",
 				"storage_account_name": "mystorageacct123",
 				"container_name":       "tfstate",
 				"key":                  "terraform.tfstate",
@@ -751,7 +750,7 @@ func TestParseConfig_ValidInputsSanitized(t *testing.T) {
 		{
 			name: "valid azure backend with workspace path",
 			configMap: map[string]interface{}{
-				"type":                 "azurerm",
+				"backend_type":         "azurerm",
 				"storage_account_name": "mystorageacct",
 				"container_name":       "tfstate",
 				"key":                  "env:/production/terraform.tfstate",
@@ -914,6 +913,356 @@ func TestValidateContainerName(t *testing.T) {
 			err := validateContainerName(tt.container)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("validateContainerName() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+// ==================================================================================
+// Phase 2: Comprehensive Testing (TDD) - Feature 002-separate-backend-type
+// ==================================================================================
+
+// TestParseConfig_ExplicitBackendType tests explicit backend_type field usage (User Story 1).
+// Tests T1-T6 from tasks.md
+func TestParseConfig_ExplicitBackendType(t *testing.T) {
+	t.Helper()
+
+	tests := []struct {
+		name     string
+		config   map[string]interface{}
+		wantType string
+		wantErr  error
+		errCheck func(error) bool // Optional: specific error validation
+	}{
+		// [T1] Test explicit backend_type: "local" with path field
+		{
+			name: "explicit local backend with path",
+			config: map[string]interface{}{
+				"backend_type": "local",
+				"path":         "./terraform.tfstate",
+			},
+			wantType: "local",
+			wantErr:  nil,
+		},
+		// [T2] Test explicit backend_type: "azurerm" with Azure keys
+		{
+			name: "explicit azurerm backend with Azure keys",
+			config: map[string]interface{}{
+				"backend_type":         "azurerm",
+				"storage_account_name": "myaccount",
+				"container_name":       "mycontainer",
+				"key":                  "terraform.tfstate",
+			},
+			wantType: "azurerm",
+			wantErr:  nil,
+		},
+		// [T3] Test unsupported backend_type value
+		{
+			name: "unsupported backend_type - s3",
+			config: map[string]interface{}{
+				"backend_type": "s3",
+				"bucket":       "mybucket",
+			},
+			wantType: "",
+			wantErr:  ErrUnsupportedBackendType,
+		},
+		{
+			name: "unsupported backend_type - gcs",
+			config: map[string]interface{}{
+				"backend_type": "gcs",
+				"bucket":       "mybucket",
+			},
+			wantType: "",
+			wantErr:  ErrUnsupportedBackendType,
+		},
+		{
+			name: "unsupported backend_type - consul",
+			config: map[string]interface{}{
+				"backend_type": "consul",
+				"path":         "terraform/state",
+			},
+			wantType: "",
+			wantErr:  ErrUnsupportedBackendType,
+		},
+		// [T4] Test backend_type: "local" with conflicting Azure keys
+		{
+			name: "backend_type local conflicts with Azure keys",
+			config: map[string]interface{}{
+				"backend_type":         "local",
+				"path":                 "./terraform.tfstate",
+				"storage_account_name": "myaccount",
+			},
+			wantType: "",
+			wantErr:  ErrBackendConfigMismatch,
+		},
+		{
+			name: "backend_type local conflicts with container_name",
+			config: map[string]interface{}{
+				"backend_type":   "local",
+				"path":           "./terraform.tfstate",
+				"container_name": "mycontainer",
+			},
+			wantType: "",
+			wantErr:  ErrBackendConfigMismatch,
+		},
+		// [T5] Test backend_type: "azurerm" with conflicting path key
+		{
+			name: "backend_type azurerm conflicts with path",
+			config: map[string]interface{}{
+				"backend_type":         "azurerm",
+				"path":                 "./terraform.tfstate",
+				"storage_account_name": "myaccount",
+				"container_name":       "mycontainer",
+				"key":                  "terraform.tfstate",
+			},
+			wantType: "",
+			wantErr:  ErrBackendConfigMismatch,
+		},
+		// [T6] Test type field is silently ignored
+		{
+			name: "type field is ignored when backend_type present",
+			config: map[string]interface{}{
+				"type":         "some-value",
+				"backend_type": "local",
+				"path":         "./terraform.tfstate",
+			},
+			wantType: "local",
+			wantErr:  nil,
+		},
+		{
+			name: "type field ignored - different from backend_type",
+			config: map[string]interface{}{
+				"type":         "azurerm",
+				"backend_type": "local",
+				"path":         "./terraform.tfstate",
+			},
+			wantType: "local",
+			wantErr:  nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg, err := ParseConfig(tt.config)
+
+			// Check error
+			if tt.wantErr != nil {
+				if err == nil {
+					t.Errorf("ParseConfig() error = nil, wantErr %v", tt.wantErr)
+					return
+				}
+				if !errors.Is(err, tt.wantErr) {
+					t.Errorf("ParseConfig() error = %v, wantErr %v", err, tt.wantErr)
+				}
+				if tt.errCheck != nil {
+					if !tt.errCheck(err) {
+						t.Errorf("ParseConfig() error validation failed for error: %v", err)
+					}
+				}
+				return
+			}
+
+			// Check no error when none expected
+			if err != nil {
+				t.Errorf("ParseConfig() unexpected error = %v", err)
+				return
+			}
+
+			// Validate BackendConfig is not nil
+			if cfg == nil {
+				t.Error("ParseConfig() returned nil config without error")
+				return
+			}
+
+			// Validate Type() method returns expected backend type
+			if cfg.Type() != tt.wantType {
+				t.Errorf("BackendConfig.Type() = %v, want %v", cfg.Type(), tt.wantType)
+			}
+		})
+	}
+}
+
+// TestParseConfig_AutoDetection tests automatic backend type detection (User Story 2).
+// Tests T7-T12 from tasks.md
+func TestParseConfig_AutoDetection(t *testing.T) {
+	t.Helper()
+
+	tests := []struct {
+		name     string
+		config   map[string]interface{}
+		wantType string
+		wantErr  error
+	}{
+		// [T7] Test auto-detect local backend (only path field)
+		{
+			name: "auto-detect local backend from path only",
+			config: map[string]interface{}{
+				"path": "./terraform.tfstate",
+			},
+			wantType: "local",
+			wantErr:  nil,
+		},
+		{
+			name: "auto-detect local backend with workspace",
+			config: map[string]interface{}{
+				"path":      "./terraform.tfstate",
+				"workspace": "production",
+			},
+			wantType: "local",
+			wantErr:  nil,
+		},
+		// [T8] Test auto-detect azurerm backend (only Azure keys)
+		{
+			name: "auto-detect azurerm from Azure keys",
+			config: map[string]interface{}{
+				"storage_account_name": "myaccount",
+				"container_name":       "mycontainer",
+				"key":                  "terraform.tfstate",
+			},
+			wantType: "azurerm",
+			wantErr:  nil,
+		},
+		{
+			name: "auto-detect azurerm with workspace",
+			config: map[string]interface{}{
+				"storage_account_name": "myaccount",
+				"container_name":       "mycontainer",
+				"key":                  "terraform.tfstate",
+				"workspace":            "production",
+			},
+			wantType: "azurerm",
+			wantErr:  nil,
+		},
+		// [T9] Test ambiguous config (both path and Azure keys)
+		{
+			name: "ambiguous config - path and storage_account_name",
+			config: map[string]interface{}{
+				"path":                 "./terraform.tfstate",
+				"storage_account_name": "myaccount",
+				"container_name":       "mycontainer",
+			},
+			wantType: "",
+			wantErr:  ErrAmbiguousBackendConfig,
+		},
+		{
+			name: "ambiguous config - path and container_name",
+			config: map[string]interface{}{
+				"path":           "./terraform.tfstate",
+				"container_name": "mycontainer",
+			},
+			wantType: "",
+			wantErr:  ErrAmbiguousBackendConfig,
+		},
+		{
+			name: "ambiguous config - all keys present",
+			config: map[string]interface{}{
+				"path":                 "./terraform.tfstate",
+				"storage_account_name": "myaccount",
+				"container_name":       "mycontainer",
+				"key":                  "terraform.tfstate",
+			},
+			wantType: "",
+			wantErr:  ErrAmbiguousBackendConfig,
+		},
+		// [T10] Test cannot detect backend (no recognizable keys)
+		{
+			name: "cannot detect - only workspace",
+			config: map[string]interface{}{
+				"workspace": "production",
+			},
+			wantType: "",
+			wantErr:  ErrCannotDetectBackend,
+		},
+		{
+			name: "cannot detect - unrecognized keys",
+			config: map[string]interface{}{
+				"some_field":  "value",
+				"other_field": "value",
+			},
+			wantType: "",
+			wantErr:  ErrCannotDetectBackend,
+		},
+		// [T11] Test partial Azure config (only storage_account_name)
+		{
+			name: "partial Azure config - only storage_account_name",
+			config: map[string]interface{}{
+				"storage_account_name": "myaccount",
+			},
+			wantType: "",
+			wantErr:  ErrCannotDetectBackend,
+		},
+		// [T11a] Test partial Azure config (only container_name)
+		{
+			name: "partial Azure config - only container_name",
+			config: map[string]interface{}{
+				"container_name": "mycontainer",
+			},
+			wantType: "",
+			wantErr:  ErrCannotDetectBackend,
+		},
+		{
+			name: "partial Azure config - storage_account_name and workspace",
+			config: map[string]interface{}{
+				"storage_account_name": "myaccount",
+				"workspace":            "prod",
+			},
+			wantType: "",
+			wantErr:  ErrCannotDetectBackend,
+		},
+		// [T12] Test explicit backend_type overrides auto-detection
+		{
+			name: "explicit backend_type overrides path detection",
+			config: map[string]interface{}{
+				"backend_type": "local",
+				"path":         "./terraform.tfstate",
+			},
+			wantType: "local",
+			wantErr:  nil,
+		},
+		{
+			name: "explicit backend_type overrides Azure keys detection",
+			config: map[string]interface{}{
+				"backend_type":         "azurerm",
+				"storage_account_name": "myaccount",
+				"container_name":       "mycontainer",
+				"key":                  "terraform.tfstate",
+			},
+			wantType: "azurerm",
+			wantErr:  nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg, err := ParseConfig(tt.config)
+
+			// Check error
+			if tt.wantErr != nil {
+				if err == nil {
+					t.Errorf("ParseConfig() error = nil, wantErr %v", tt.wantErr)
+					return
+				}
+				if !errors.Is(err, tt.wantErr) {
+					t.Errorf("ParseConfig() error = %v, wantErr %v", err, tt.wantErr)
+				}
+				return
+			}
+
+			// Check no error when none expected
+			if err != nil {
+				t.Errorf("ParseConfig() unexpected error = %v", err)
+				return
+			}
+
+			// Validate BackendConfig is not nil
+			if cfg == nil {
+				t.Error("ParseConfig() returned nil config without error")
+				return
+			}
+
+			// Validate Type() method returns expected backend type
+			if cfg.Type() != tt.wantType {
+				t.Errorf("BackendConfig.Type() = %v, want %v", cfg.Type(), tt.wantType)
 			}
 		})
 	}

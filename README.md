@@ -95,7 +95,7 @@ Use in Nomos configuration:
 ```csl
 // app.csl
 source tfstate_infra = terraform-remote-state {
-  type = "local"
+  backend_type = "local"
   path = "./terraform.tfstate"
 }
 
@@ -119,7 +119,7 @@ Use in Nomos configuration:
 ```csl
 // app.csl
 source tfstate_infra = terraform-remote-state {
-  type = "azurerm"
+  backend_type = "azurerm"
   storage_account_name = "mytfstate"
   container_name = "tfstate"
   key = "prod/terraform.tfstate"
@@ -137,23 +137,112 @@ config MyApp {
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `type` | string | Yes | Must be `"local"` |
+| `backend_type` | string | No* | Must be `"local"` if specified |
 | `path` | string | Yes | Path to terraform.tfstate file |
 | `workspace` | string | No | Terraform workspace name (default: `"default"`) |
+
+\* The `backend_type` field is optional. If omitted, the backend type is automatically detected from configuration keys (presence of `path` → local backend).
 
 ### Azure Blob Storage Backend
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `type` | string | Yes | Must be `"azurerm"` |
+| `backend_type` | string | No* | Must be `"azurerm"` if specified |
 | `storage_account_name` | string | Yes | Azure storage account name (3-24 chars, lowercase alphanumeric) |
 | `container_name` | string | Yes | Blob container name (3-63 chars) |
 | `key` | string | Yes | Blob path/key (include workspace path if applicable) |
+
+\* The `backend_type` field is optional. If omitted, the backend type is automatically detected from configuration keys (presence of `storage_account_name` + `container_name` → azurerm backend).
 
 **Azure Authentication**: Set these environment variables:
 - `AZURE_TENANT_ID`
 - `AZURE_CLIENT_ID`
 - `AZURE_CLIENT_SECRET`
+
+## Configuration Clarification
+
+### Understanding `type` vs `backend_type`
+
+The Nomos provider ecosystem uses two distinct configuration fields that serve different purposes:
+
+#### CLI-Level: `type` (Provider Source)
+
+The `type` field in Nomos source declarations identifies **which provider binary to load**. This is used by the Nomos tooling to locate and start the correct provider subprocess. It uses the fully-qualified provider name including the organization.
+
+```yaml
+# Nomos source configuration
+source:
+  alias: 'tfstate'
+  type: 'autonomous-bits/nomos-provider-terraform-remote-state'  # CLI: Which provider binary to load
+  version: '0.0.1'
+  backend_type: 'local'           # Runtime: Which backend to use
+  path: "./terraform.tfstate"      # Runtime: Backend configuration
+```
+
+The `type` field is consumed by the Nomos CLI to locate and start the provider subprocess.
+
+#### Runtime: `backend_type` (Backend Selection)
+
+The `backend_type` field specifies **which backend implementation to use at runtime** for retrieving state files. This is sent to the provider during the `Init` RPC call along with other configuration parameters.
+
+**Local Backend Example**:
+```yaml
+source:
+  alias: 'tfstate_infra'
+  type: 'autonomous-bits/nomos-provider-terraform-remote-state'
+  version: '0.0.1'
+  backend_type: 'local'           # Runtime: Use local filesystem backend
+  path: "./terraform.tfstate"      # Runtime: Path to state file
+```
+
+**Azure Backend Example**:
+```yaml
+source:
+  alias: 'tfstate_azure'
+  type: 'autonomous-bits/nomos-provider-terraform-remote-state'
+  version: '0.0.1'
+  backend_type: 'azurerm'         # Runtime: Use Azure Blob Storage backend
+  storage_account_name: 'mytfstate'
+  container_name: 'tfstate'
+  key: 'terraform.tfstate'
+```
+
+#### Key Differences
+
+| Aspect | `type` (CLI) | `backend_type` (Runtime) |
+|--------|--------------|-------------------------|
+| **Scope** | Nomos CLI / tooling | Provider runtime |
+| **Purpose** | Identify which provider binary to load | Select backend implementation (local, azurerm) |
+| **Values** | Fully-qualified provider names (`autonomous-bits/nomos-provider-terraform-remote-state`) | Backend types (`local`, `azurerm`, future: `s3`, `gcs`) |
+| **When Used** | Provider subprocess discovery | During provider `Init` RPC |
+| **Visibility** | Nomos CLI (loads provider) | Provider runtime (selects backend) |
+| **Required** | Yes (CLI must know which provider to start) | No (auto-detected from config keys if omitted) |
+
+#### Auto-Detection Feature
+
+The `backend_type` field is **optional**. If omitted, the provider automatically detects the backend type from configuration keys:
+
+- Configuration with `path` → detects as `local` backend
+- Configuration with `storage_account_name` + `container_name` → detects as `azurerm` backend
+
+```yaml
+# Explicit backend_type (recommended for clarity)
+source:
+  alias: 'tfstate_explicit'
+  type: 'autonomous-bits/nomos-provider-terraform-remote-state'
+  version: '0.0.1'
+  backend_type: 'local'                # Explicit
+  path: "./terraform.tfstate"
+
+# Auto-detected backend_type (convenient for simple cases)
+source:
+  alias: 'tfstate_auto'
+  type: 'autonomous-bits/nomos-provider-terraform-remote-state'
+  version: '0.0.1'
+  path: "./terraform.tfstate"          # Auto-detects as "local"
+```
+
+**Recommendation**: Use explicit `backend_type` in production configurations for clarity, even though auto-detection works reliably.
 
 ## Architecture
 
