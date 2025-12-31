@@ -104,7 +104,7 @@ jobs:
           if [ "${{ matrix.goos }}" = "windows" ]; then
             output="${output}.exe"
           fi
-          go build -v -o "$output" ./cmd/nomos-provider-terraform-remote-state
+          go build -v -o "$output" ./cmd/provider
 
       - name: Upload binary artifact
         uses: actions/upload-artifact@v4

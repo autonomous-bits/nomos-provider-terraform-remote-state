@@ -2,6 +2,7 @@
 
 # Variables
 BINARY_NAME=nomos-provider-terraform-remote-state
+CMD_PATH=./cmd/provider
 BUILD_DIR=bin
 GO=go
 GOLANGCI_LINT=golangci-lint
@@ -28,13 +29,13 @@ help:
 build: tidy
 	@echo "Building $(BINARY_NAME)..."
 	@mkdir -p $(BUILD_DIR)
-	$(GO) build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) ./cmd/$(BINARY_NAME)
+	$(GO) build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) $(CMD_PATH)
 	@echo "Build complete: $(BUILD_DIR)/$(BINARY_NAME)"
 
 ## install: Install the provider binary to GOPATH/bin
 install: tidy
 	@echo "Installing $(BINARY_NAME)..."
-	$(GO) install $(LDFLAGS) ./cmd/$(BINARY_NAME)
+	$(GO) install $(LDFLAGS) $(CMD_PATH)
 	@echo "Installed to $(shell go env GOPATH)/bin/$(BINARY_NAME)"
 
 ## test: Run all tests
