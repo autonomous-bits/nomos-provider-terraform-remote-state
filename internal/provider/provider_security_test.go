@@ -24,8 +24,8 @@ func TestSecurity_PathTraversalAttempts(t *testing.T) {
 		{
 			name: "path traversal with ../ in file path",
 			config: map[string]interface{}{
-				"type": "local",
-				"path": "../../../etc/passwd",
+				"backend_type": "local",
+				"path":         "../../../etc/passwd",
 			},
 			expectedCode:   codes.InvalidArgument,
 			expectedErrMsg: "path traversal",
@@ -33,8 +33,8 @@ func TestSecurity_PathTraversalAttempts(t *testing.T) {
 		{
 			name: "path traversal with ..\\ Windows style (backslash check first)",
 			config: map[string]interface{}{
-				"type": "local",
-				"path": "..\\..\\Windows\\System32",
+				"backend_type": "local",
+				"path":         "..\\..\\Windows\\System32",
 			},
 			expectedCode:   codes.InvalidArgument,
 			expectedErrMsg: "path traversal", // Caught by .. check first
@@ -42,8 +42,8 @@ func TestSecurity_PathTraversalAttempts(t *testing.T) {
 		{
 			name: "empty path",
 			config: map[string]interface{}{
-				"type": "local",
-				"path": "",
+				"backend_type": "local",
+				"path":         "",
 			},
 			expectedCode:   codes.InvalidArgument,
 			expectedErrMsg: "cannot be empty",
@@ -119,8 +119,8 @@ func TestSecurity_FetchInputValidation(t *testing.T) {
 
 			// Initialize with a local backend
 			config, err := structpb.NewStruct(map[string]interface{}{
-				"type": "local",
-				"path": "terraform.tfstate",
+				"backend_type": "local",
+				"path":         "terraform.tfstate",
 			})
 			if err != nil {
 				t.Fatalf("failed to create config: %v", err)
@@ -173,8 +173,8 @@ func TestSecurity_ConfigValidationInjection(t *testing.T) {
 		{
 			name: "local backend with path traversal in path",
 			config: map[string]interface{}{
-				"type": "local",
-				"path": "../../../etc/passwd",
+				"backend_type": "local",
+				"path":         "../../../etc/passwd",
 			},
 			expectedCode:   codes.InvalidArgument,
 			expectedErrMsg: "path traversal",
@@ -182,7 +182,7 @@ func TestSecurity_ConfigValidationInjection(t *testing.T) {
 		{
 			name: "local backend with null byte in path (sanitized)",
 			config: map[string]interface{}{
-				"type": "local",
+				"backend_type": "local",
 				// Null bytes are sanitized (removed), resulting in valid path
 				// This is defense-in-depth: sanitization handles null bytes
 				// Testing that the sanitized result is valid
@@ -195,8 +195,8 @@ func TestSecurity_ConfigValidationInjection(t *testing.T) {
 		{
 			name: "local backend with command injection attempt (semicolon)",
 			config: map[string]interface{}{
-				"type": "local",
-				"path": "terraform.tfstate; rm -rf /",
+				"backend_type": "local",
+				"path":         "terraform.tfstate; rm -rf /",
 			},
 			expectedCode:   codes.InvalidArgument,
 			expectedErrMsg: "invalid", // Semicolon not allowed in path
@@ -204,7 +204,7 @@ func TestSecurity_ConfigValidationInjection(t *testing.T) {
 		{
 			name: "azurerm backend with path traversal in key",
 			config: map[string]interface{}{
-				"type":                 "azurerm",
+				"backend_type":         "azurerm",
 				"storage_account_name": "teststorage",
 				"container_name":       "tfstate",
 				"key":                  "../../../etc/passwd",
@@ -215,7 +215,7 @@ func TestSecurity_ConfigValidationInjection(t *testing.T) {
 		{
 			name: "azurerm backend with invalid storage account name (uppercase)",
 			config: map[string]interface{}{
-				"type":                 "azurerm",
+				"backend_type":         "azurerm",
 				"storage_account_name": "TestStorage",
 				"container_name":       "tfstate",
 				"key":                  "terraform.tfstate",
@@ -226,7 +226,7 @@ func TestSecurity_ConfigValidationInjection(t *testing.T) {
 		{
 			name: "azurerm backend with consecutive hyphens in container",
 			config: map[string]interface{}{
-				"type":                 "azurerm",
+				"backend_type":         "azurerm",
 				"storage_account_name": "teststorage",
 				"container_name":       "tf--state",
 				"key":                  "terraform.tfstate",
@@ -237,7 +237,7 @@ func TestSecurity_ConfigValidationInjection(t *testing.T) {
 		{
 			name: "unsupported backend type (SQL injection attempt)",
 			config: map[string]interface{}{
-				"type": "postgresql'; DROP TABLE state; --",
+				"backend_type": "postgresql'; DROP TABLE state; --",
 			},
 			expectedCode:   codes.InvalidArgument,
 			expectedErrMsg: "unsupported backend type",
@@ -245,7 +245,7 @@ func TestSecurity_ConfigValidationInjection(t *testing.T) {
 		{
 			name: "backend type with null byte",
 			config: map[string]interface{}{
-				"type": "local\x00malicious",
+				"backend_type": "local\x00malicious",
 			},
 			expectedCode:   codes.InvalidArgument,
 			expectedErrMsg: "unsupported backend type", // Becomes "localmalicious" after sanitization
@@ -305,24 +305,24 @@ func TestSecurity_ResourceExhaustion(t *testing.T) {
 		{
 			name: "extremely long path",
 			config: map[string]interface{}{
-				"type": "local",
-				"path": strings.Repeat("a", 2000), // Exceeds max path length
+				"backend_type": "local",
+				"path":         strings.Repeat("a", 2000), // Exceeds max path length
 			},
 			expectedErrMsg: "maximum length",
 		},
 		{
 			name: "extremely long workspace name",
 			config: map[string]interface{}{
-				"type":      "local",
-				"path":      "terraform.tfstate",
-				"workspace": strings.Repeat("w", 200), // Exceeds max workspace length
+				"backend_type": "local",
+				"path":         "terraform.tfstate",
+				"workspace":    strings.Repeat("w", 200), // Exceeds max workspace length
 			},
 			expectedErrMsg: "maximum length",
 		},
 		{
 			name: "extremely long blob key",
 			config: map[string]interface{}{
-				"type":                 "azurerm",
+				"backend_type":         "azurerm",
 				"storage_account_name": "teststorage",
 				"container_name":       "tfstate",
 				"key":                  strings.Repeat("k", 2000), // Exceeds max key length
@@ -362,7 +362,7 @@ func TestSecurity_NoCredentialsInErrors(t *testing.T) {
 
 	// Test with Azure backend (credentials come from environment)
 	config, err := structpb.NewStruct(map[string]interface{}{
-		"type":                 "azurerm",
+		"backend_type":         "azurerm",
 		"storage_account_name": "teststorage",
 		"container_name":       "tfstate",
 		"key":                  "terraform.tfstate",
@@ -435,9 +435,9 @@ func TestSecurity_WorkspaceNameValidation(t *testing.T) {
 			s := NewService()
 
 			config, err := structpb.NewStruct(map[string]interface{}{
-				"type":      "local",
-				"path":      "terraform.tfstate",
-				"workspace": tt.workspace,
+				"backend_type": "local",
+				"path":         "terraform.tfstate",
+				"workspace":    tt.workspace,
 			})
 			if err != nil {
 				t.Fatalf("failed to create config: %v", err)

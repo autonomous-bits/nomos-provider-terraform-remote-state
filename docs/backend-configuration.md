@@ -26,9 +26,11 @@ The local backend reads Terraform state files from the local filesystem. This is
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
-| `type` | string | Yes | - | Must be `"local"` |
+| `backend_type` | string | No* | (auto-detected) | Must be `"local"` if specified |
 | `path` | string | Yes | - | Path to terraform.tfstate file |
 | `workspace` | string | No | `"default"` | Terraform workspace name |
+
+\* The `backend_type` field is optional. If omitted, the backend type is automatically detected from configuration keys (presence of `path` → local backend). Explicit specification is recommended for clarity.
 
 ### Path Resolution
 
@@ -71,11 +73,11 @@ source tfstate = terraform-remote-state {
 
 ### Examples
 
-#### Basic Local Backend
+#### Basic Local Backend (Explicit backend_type)
 
 ```csl
 source tfstate_infra = terraform-remote-state {
-  type = "local"
+  backend_type = "local"
   path = "/var/terraform/infra/terraform.tfstate"
 }
 
@@ -88,7 +90,7 @@ config App {
 
 ```csl
 source tfstate_staging = terraform-remote-state {
-  type = "local"
+  backend_type = "local"
   path = "./terraform.tfstate"
   workspace = "staging"
 }
@@ -104,7 +106,7 @@ config App {
 ```csl
 // Use Nomos variable for workspace selection
 source tfstate = terraform-remote-state {
-  type = "local"
+  backend_type = "local"
   path = "./terraform.tfstate"
   workspace = var.environment  // Pass via --var environment=dev
 }
@@ -114,7 +116,35 @@ config App {
   vpc_id = tfstate.vpc_id.value
 }
 ```
+#### Auto-Detected Local Backend (Recommended for Simple Cases)
 
+When only local backend keys are present, the provider automatically detects `backend_type = "local"`:
+
+```csl
+// backend_type omitted - auto-detected as "local" from presence of "path" key
+source tfstate_infra = terraform-remote-state {
+  path = "/var/terraform/infra/terraform.tfstate"
+}
+
+config App {
+  vpc_id = tfstate_infra.vpc_id.value
+}
+```
+
+**Auto-Detection Rules**:
+- If configuration contains `path` key (and no Azure keys) → detects as `local` backend
+- Explicit `backend_type` always takes precedence over auto-detection
+- Recommended: Use explicit `backend_type` for production configurations for clarity
+
+**When to Use Auto-Detection**:
+- ✅ Simple, single-backend configurations
+- ✅ Development and testing
+- ✅ When backend type is obvious from configuration
+
+**When to Use Explicit backend_type**:
+- ✅ Production configurations (clarity and explicitness)
+- ✅ Complex multi-backend setups
+- ✅ Team environments (reduces ambiguity)
 ### Common Errors
 
 **Error**: `state file not found: /path/terraform.tfstate (workspace: default)`
@@ -159,10 +189,12 @@ The Azure backend reads Terraform state files from Azure Blob Storage. This is u
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
-| `type` | string | Yes | - | Must be `"azurerm"` |
+| `backend_type` | string | No* | (auto-detected) | Must be `"azurerm"` if specified |
 | `storage_account_name` | string | Yes | - | Azure storage account name |
 | `container_name` | string | Yes | - | Blob container name |
 | `key` | string | Yes | - | Blob path/key |
+
+\* The `backend_type` field is optional. If omitted, the backend type is automatically detected from configuration keys (presence of `storage_account_name` + `container_name` → azurerm backend). Explicit specification is recommended for clarity.
 
 ### Authentication
 
@@ -222,7 +254,7 @@ The provider treats the key as an opaque string and does NOT manipulate it based
 
 ```csl
 source tfstate = terraform-remote-state {
-  type = "azurerm"
+  backend_type = "azurerm"
   storage_account_name = "mytfstate"
   container_name = "tfstate"
   key = "terraform.tfstate"  // Default workspace state
@@ -235,14 +267,14 @@ Terraform's azurerm backend uses the `env:/<workspace>/` prefix for named worksp
 
 ```csl
 source tfstate_dev = terraform-remote-state {
-  type = "azurerm"
+  backend_type = "azurerm"
   storage_account_name = "mytfstate"
   container_name = "tfstate"
   key = "env:/dev/terraform.tfstate"  // Dev workspace
 }
 
 source tfstate_prod = terraform-remote-state {
-  type = "azurerm"
+  backend_type = "azurerm"
   storage_account_name = "mytfstate"
   container_name = "tfstate"
   key = "env:/prod/terraform.tfstate"  // Prod workspace
@@ -254,7 +286,7 @@ source tfstate_prod = terraform-remote-state {
 ```csl
 // Workspaces directory pattern
 source tfstate = terraform-remote-state {
-  type = "azurerm"
+  backend_type = "azurerm"
   storage_account_name = "mytfstate"
   container_name = "tfstate"
   key = "workspaces/staging/terraform.tfstate"
@@ -262,7 +294,7 @@ source tfstate = terraform-remote-state {
 
 // Application-specific pattern
 source tfstate = terraform-remote-state {
-  type = "azurerm"
+  backend_type = "azurerm"
   storage_account_name = "mytfstate"
   container_name = "tfstate"
   key = "apps/frontend/prod.tfstate"
@@ -321,11 +353,11 @@ Examples:
 
 ### Examples
 
-#### Basic Azure Backend
+#### Basic Azure Backend (Explicit backend_type)
 
 ```csl
 source tfstate_infra = terraform-remote-state {
-  type = "azurerm"
+  backend_type = "azurerm"
   storage_account_name = "mycompanytfstate"
   container_name = "infrastructure-state"
   key = "network/terraform.tfstate"
@@ -342,7 +374,7 @@ config NetworkConfig {
 ```csl
 // Pass environment via --var env=prod
 source tfstate = terraform-remote-state {
-  type = "azurerm"
+  backend_type = "azurerm"
   storage_account_name = "mycompanytfstate"
   container_name = "tfstate"
   key = "env:/${var.env}/terraform.tfstate"
@@ -359,7 +391,7 @@ config App {
 ```csl
 // Network infrastructure (Azure)
 source tfstate_network = terraform-remote-state {
-  type = "azurerm"
+  backend_type = "azurerm"
   storage_account_name = "prodtfstate"
   container_name = "tfstate"
   key = "network/terraform.tfstate"
@@ -367,7 +399,7 @@ source tfstate_network = terraform-remote-state {
 
 // Database infrastructure (Azure, different workspace)
 source tfstate_database = terraform-remote-state {
-  type = "azurerm"
+  backend_type = "azurerm"
   storage_account_name = "prodtfstate"
   container_name = "tfstate"
   key = "env:/prod/database.tfstate"
@@ -379,6 +411,41 @@ config App {
   db_endpoint = tfstate_database.endpoint.value
 }
 ```
+
+#### Auto-Detected Azure Backend (Recommended for Simple Cases)
+
+When only Azure backend keys are present, the provider automatically detects `backend_type = "azurerm"`:
+
+```csl
+// backend_type omitted - auto-detected as "azurerm" from presence of
+// "storage_account_name" + "container_name" keys
+source tfstate_infra = terraform-remote-state {
+  storage_account_name = "mycompanytfstate"
+  container_name = "infrastructure-state"
+  key = "network/terraform.tfstate"
+}
+
+config NetworkConfig {
+  vpc_id = tfstate_infra.vpc_id.value
+  subnets = tfstate_infra.subnet_ids.value
+}
+```
+
+**Auto-Detection Rules**:
+- If configuration contains `storage_account_name` + `container_name` keys (and no local keys) → detects as `azurerm` backend
+- Explicit `backend_type` always takes precedence over auto-detection
+- Partial Azure configuration (only one key) results in error: `ErrCannotDetectBackend`
+- Recommended: Use explicit `backend_type` for production configurations for clarity
+
+**When to Use Auto-Detection**:
+- ✅ Simple, single-backend configurations
+- ✅ Development and testing
+- ✅ When backend type is obvious from configuration
+
+**When to Use Explicit backend_type**:
+- ✅ Production configurations (clarity and explicitness)
+- ✅ Complex multi-backend setups
+- ✅ Team environments (reduces ambiguity)
 
 ### Common Errors
 

@@ -12,7 +12,7 @@ The provider uses these gRPC error codes:
 
 | Code | Description | Common Causes |
 |------|-------------|---------------|
-| `InvalidArgument` | Invalid configuration or path | Bad config, empty fields, invalid types |
+| `InvalidArgument` | Invalid configuration or path | Bad config, empty fields, invalid types, ambiguous backend config, backend type mismatch |
 | `NotFound` | Resource not found | Missing state file, missing output, missing blob |
 | `PermissionDenied` | Authentication/authorization failed | Invalid Azure credentials, insufficient permissions |
 | `FailedPrecondition` | Operation not allowed in current state | Not initialized, unsupported state version |
@@ -72,7 +72,7 @@ source tfstate = terraform-remote-state {
 
 **Full Message**: `code = InvalidArgument, desc = unsupported backend type "s3", available types: [local, azurerm]`
 
-**Cause**: Specified backend type is not supported in current version
+**Cause**: Specified backend type (via `backend_type` field) is not supported in current version
 
 **Supported Backends** (MVP):
 - `local`
@@ -84,6 +84,135 @@ source tfstate = terraform-remote-state {
 - `http` (planned)
 
 **Solution**: Use a supported backend type or wait for future releases
+
+---
+
+#### Error: `ambiguous backend configuration`
+
+**Full Message**: `code = InvalidArgument, desc = ambiguous backend configuration: both local (path) and Azure (storage_account_name, container_name) keys present. Specify 'backend_type' explicitly (local, azurerm)`
+
+**Cause**: Configuration contains keys for multiple backend types without explicit `backend_type` specification
+
+**Example of Ambiguous Configuration**:
+```csl
+// AMBIGUOUS - Contains both local AND Azure keys
+source tfstate = terraform-remote-state {
+  path = "./terraform.tfstate"                    // Local backend key
+  storage_account_name = "mytfstate"             // Azure backend key
+  container_name = "tfstate"                     // Azure backend key
+  key = "terraform.tfstate"
+}
+```
+
+**Solution**: Add explicit `backend_type` field to specify which backend to use:
+
+```csl
+// CLEAR - Explicit backend_type
+source tfstate = terraform-remote-state {
+  backend_type = "local"                         // Explicit: use local backend
+  path = "./terraform.tfstate"
+}
+
+// OR
+
+source tfstate = terraform-remote-state {
+  backend_type = "azurerm"                       // Explicit: use Azure backend
+  storage_account_name = "mytfstate"
+  container_name = "tfstate"
+  key = "terraform.tfstate"
+}
+```
+
+---
+
+#### Error: `cannot auto-detect backend type`
+
+**Full Message**: `code = InvalidArgument, desc = cannot auto-detect backend type: no 'backend_type' specified and cannot infer from configuration. Supported backends: local (requires 'path'), azurerm (requires 'storage_account_name' and 'container_name')`
+
+**Cause**: No `backend_type` specified and configuration doesn't contain recognizable backend keys
+
+**Common Scenarios**:
+
+1. **Empty or minimal configuration**:
+```csl
+// INCOMPLETE - No recognizable backend keys
+source tfstate = terraform-remote-state {
+  workspace = "prod"  // Not enough to detect backend type
+}
+```
+
+2. **Partial Azure configuration**:
+```csl
+// INCOMPLETE - Only one Azure key (need both storage_account_name + container_name)
+source tfstate = terraform-remote-state {
+  storage_account_name = "mytfstate"  // Missing container_name
+}
+```
+
+**Solution**: Either add `backend_type` explicitly OR provide complete backend-specific configuration:
+
+```csl
+// Option 1: Explicit backend_type
+source tfstate = terraform-remote-state {
+  backend_type = "local"
+  path = "./terraform.tfstate"
+}
+
+// Option 2: Complete Azure configuration (auto-detects as azurerm)
+source tfstate = terraform-remote-state {
+  storage_account_name = "mytfstate"    // Both keys present
+  container_name = "tfstate"            // Auto-detects as azurerm
+  key = "terraform.tfstate"
+}
+```
+
+---
+
+#### Error: `backend type conflicts with configuration`
+
+**Full Message**: 
+- `code = InvalidArgument, desc = backend type conflicts with configuration: backend_type is 'local' but Azure keys present: [storage_account_name, container_name]`
+- `code = InvalidArgument, desc = backend type conflicts with configuration: backend_type is 'azurerm' but local 'path' key present`
+
+**Cause**: Explicit `backend_type` value conflicts with configuration keys present
+
+**Example 1: Local backend_type with Azure keys**:
+```csl
+// CONFLICT - backend_type says "local" but Azure keys present
+source tfstate = terraform-remote-state {
+  backend_type = "local"                     // Says local...
+  storage_account_name = "mytfstate"        // But has Azure keys!
+  container_name = "tfstate"
+  key = "terraform.tfstate"
+}
+```
+
+**Example 2: Azure backend_type with local keys**:
+```csl
+// CONFLICT - backend_type says "azurerm" but path key present
+source tfstate = terraform-remote-state {
+  backend_type = "azurerm"                   // Says Azure...
+  path = "./terraform.tfstate"              // But has local key!
+}
+```
+
+**Solution**: Remove conflicting keys to match `backend_type`:
+
+```csl
+// CORRECT - Local backend
+source tfstate = terraform-remote-state {
+  backend_type = "local"
+  path = "./terraform.tfstate"              // Only local keys
+}
+
+// CORRECT - Azure backend
+source tfstate = terraform-remote-state {
+  backend_type = "azurerm"
+  storage_account_name = "mytfstate"        // Only Azure keys
+  container_name = "tfstate"
+  key = "terraform.tfstate"
+}
+```
 
 ---
 
@@ -661,6 +790,10 @@ output "app_database_url" {
 |-----------|----------------------|---------|
 | InvalidArgument | `missing required field` | [Configuration Errors](#configuration-errors) |
 | InvalidArgument | `invalid configuration` | [Configuration Errors](#configuration-errors) |
+| InvalidArgument | `unsupported backend type` | [Configuration Errors](#configuration-errors) |
+| InvalidArgument | `ambiguous backend configuration` | [Configuration Errors](#configuration-errors) |
+| InvalidArgument | `cannot auto-detect backend type` | [Configuration Errors](#configuration-errors) |
+| InvalidArgument | `backend type conflicts with configuration` | [Configuration Errors](#configuration-errors) |
 | InvalidArgument | `path traversal` | [Path Errors](#path-and-validation-errors) |
 | InvalidArgument | `invalid workspace name` | [Path Errors](#path-and-validation-errors) |
 | NotFound | `state file not found` | [State File Errors](#state-file-errors) |
