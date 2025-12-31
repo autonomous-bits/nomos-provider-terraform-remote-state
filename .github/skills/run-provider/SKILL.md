@@ -272,7 +272,7 @@ grpcurl -plaintext -d '{
 Build with debug flags:
 
 ```bash
-go build -gcflags="all=-N -l" -o bin/provider-debug ./cmd/nomos-provider-terraform-remote-state
+go build -gcflags="all=-N -l" -o bin/provider-debug ./cmd/provider
 ```
 
 Run with debugger (using delve):
@@ -316,10 +316,10 @@ Run with profiling enabled:
 
 ```bash
 # CPU profiling
-go run -cpuprofile=cpu.prof ./cmd/nomos-provider-terraform-remote-state
+go run -cpuprofile=cpu.prof ./cmd/provider
 
 # Memory profiling  
-go run -memprofile=mem.prof ./cmd/nomos-provider-terraform-remote-state
+go run -memprofile=mem.prof ./cmd/provider
 
 # Analyze profiles
 go tool pprof cpu.prof
@@ -390,13 +390,13 @@ Build for different platforms:
 
 ```bash
 # Linux AMD64
-GOOS=linux GOARCH=amd64 go build -o bin/provider-linux-amd64 ./cmd/nomos-provider-terraform-remote-state
+GOOS=linux GOARCH=amd64 go build -o bin/provider-linux-amd64 ./cmd/provider
 
 # macOS ARM64 (Apple Silicon)
-GOOS=darwin GOARCH=arm64 go build -o bin/provider-darwin-arm64 ./cmd/nomos-provider-terraform-remote-state
+GOOS=darwin GOARCH=arm64 go build -o bin/provider-darwin-arm64 ./cmd/provider
 
 # Windows AMD64
-GOOS=windows GOARCH=amd64 go build -o bin/provider-windows-amd64.exe ./cmd/nomos-provider-terraform-remote-state
+GOOS=windows GOARCH=amd64 go build -o bin/provider-windows-amd64.exe ./cmd/provider
 ```
 
 ## Troubleshooting
@@ -517,7 +517,7 @@ Build and run in Docker:
 FROM golang:1.25-alpine AS builder
 WORKDIR /app
 COPY . .
-RUN go build -o provider ./cmd/nomos-provider-terraform-remote-state
+RUN go build -o provider ./cmd/provider
 
 FROM alpine:latest
 COPY --from=builder /app/provider /usr/local/bin/

@@ -33,7 +33,7 @@ description: "Task list for Terraform Remote State Provider implementation"
 **Purpose**: Project initialization and basic structure required before any implementation
 
 - [X] [S1] Initialize Go module at root with `go mod init github.com/autonomous-bits/nomos-provider-terraform-remote-state`
-- [X] [S2] [P] Create directory structure: cmd/nomos-provider-terraform-remote-state/, internal/provider/, internal/backend/, internal/state/, internal/config/
+- [X] [S2] [P] Create directory structure: cmd/provider/, internal/provider/, internal/backend/, internal/state/, internal/config/
 - [X] [S3] [P] Add gRPC dependencies in go.mod: github.com/autonomous-bits/nomos/libs/provider-proto, google.golang.org/grpc, google.golang.org/protobuf
 - [X] [S4] [P] Add Azure SDK dependencies in go.mod: github.com/Azure/azure-sdk-for-go/sdk/storage/azblob, github.com/Azure/azure-sdk-for-go/sdk/azidentity
 - [X] [S5] [P] Create Makefile with targets: build, test, lint, clean
@@ -51,7 +51,7 @@ description: "Task list for Terraform Remote State Provider implementation"
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [X] [G1] Create main entry point in cmd/nomos-provider-terraform-remote-state/main.go with gRPC server setup, port discovery (print PROVIDER_PORT), and signal handling
+- [X] [G1] Create main entry point in cmd/provider/main.go with gRPC server setup, port discovery (print PROVIDER_PORT), and signal handling
 - [X] [A1] [P] Define Backend interface in internal/backend/backend.go with FetchState(ctx context.Context) (*state.StateFile, error) method
 - [X] [A2] [P] Define StateFile struct in internal/state/types.go with Version, TerraformVersion, Serial, Lineage, Outputs fields
 - [X] [A3] [P] Define OutputValue struct in internal/state/types.go with Value, Type, Sensitive fields

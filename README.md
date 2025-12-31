@@ -267,7 +267,7 @@ source:
 
 ### Package Structure
 
-- `cmd/nomos-provider-terraform-remote-state/`: Main executable entry point
+- `cmd/provider/`: Main executable entry point
 - `internal/provider/`: gRPC service implementation
 - `internal/backend/`: Backend interface and implementations (local, Azure)
 - `internal/state/`: State file parsing and type definitions

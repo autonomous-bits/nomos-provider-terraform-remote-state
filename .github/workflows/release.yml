@@ -53,7 +53,7 @@ jobs:
           fi
           
           go build -v -ldflags="-s -w -X main.version=${VERSION}" \
-            -o "$output" ./cmd/nomos-provider-terraform-remote-state
+            -o "$output" ./cmd/provider
           
           echo "Built: $output"
           ls -lh "$output"
