@@ -44,19 +44,22 @@ jobs:
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
           VERSION: ${{ steps.version.outputs.VERSION }}
         run: |
-          binary_name="nomos-provider-terraform-remote-state"
-          output="${binary_name}-${VERSION}-${{ matrix.goos }}-${{ matrix.goarch }}"
+          binary_name="nomos-provider-terraform-remote-state-${VERSION}-${{ matrix.goos }}-${{ matrix.goarch }}"
           if [ "${{ matrix.goos }}" = "windows" ]; then
-            output="${output}.exe"
+            binary_name="${binary_name}.exe"
           fi
           
           go build -v -ldflags="-s -w -X main.version=${VERSION}" \
-            -o "$output" ./cmd/provider
+            -o "$binary_name" ./cmd/provider
           
-          echo "Built: $output"
-          ls -lh "$output"
+          echo "Built: $binary_name"
+          ls -lh "$binary_name"
+          
+          # Verify the binary was built for the correct platform
+          file "$binary_name" || true
 
       - name: Compress binary (Unix)
         if: matrix.goos != 'windows'
@@ -64,8 +67,8 @@ jobs:
           VERSION: ${{ steps.version.outputs.VERSION }}
         run: |
           binary="nomos-provider-terraform-remote-state-${VERSION}-${{ matrix.goos }}-${{ matrix.goarch }}"
-          gzip -9 "$binary"
-          echo "Compressed: ${binary}.gz"
+          tar czf "${binary}.tar.gz" "$binary"
+          echo "Compressed: ${binary}.tar.gz"
 
       - name: Compress binary (Windows)
         if: matrix.goos == 'windows'
@@ -84,7 +87,7 @@ jobs:
           if [ "${{ matrix.goos }}" = "windows" ]; then
             file="nomos-provider-terraform-remote-state-${VERSION}-${{ matrix.goos }}-${{ matrix.goarch }}.zip"
           else
-            file="nomos-provider-terraform-remote-state-${VERSION}-${{ matrix.goos }}-${{ matrix.goarch }}.gz"
+            file="nomos-provider-terraform-remote-state-${VERSION}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz"
           fi
           sha256sum "$file" > "${file}.sha256"
           cat "${file}.sha256"
@@ -94,7 +97,7 @@ jobs:
         with:
           name: release-${{ matrix.goos }}-${{ matrix.goarch }}
           path: |
-            *.gz
+            *.tar.gz
             *.zip
             *.sha256
           retention-days: 30
@@ -161,7 +164,7 @@ jobs:
       - name: Prepare release assets
         run: |
           mkdir -p release-assets
-          find artifacts -type f \( -name "*.gz" -o -name "*.zip" -o -name "*.sha256" \) \
+          find artifacts -type f \( -name "*.tar.gz" -o -name "*.zip" -o -name "*.sha256" \) \
             -exec cp {} release-assets/ \;
           
           # Create combined checksums file
