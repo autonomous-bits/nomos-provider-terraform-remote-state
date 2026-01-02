@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-01-02
+
+### Fixed
+- **Release Pipeline**: Fix cross-compilation for darwin-arm64 binaries
+  - Added `CGO_ENABLED=0` to ensure proper cross-compilation without C dependencies
+  - Changed archive format from `.gz` to `.tar.gz` for proper distribution
+  - Added binary platform verification with `file` command in CI/CD logs
+- **Release Notes**: Fix CHANGELOG extraction in release workflow
+  - Preserve internal blank lines in release notes for proper formatting
+  - Skip version header line in extracted notes
+  - Only remove leading/trailing empty lines, not all blank lines
+  - Added debug output to verify release notes content
+
+### Added
+- **Documentation**: Release packaging guide (`docs/release-packaging.md`)
+  - Package structure documentation
+  - Nomos provider directory layout specification
+  - Manual installation instructions
+  - Troubleshooting guide for platform-specific issues
+
 ## [0.1.0] - 2025-12-31
 
 ### Changed
@@ -264,6 +284,7 @@ The following features are intentionally deferred to future releases:
 - **Go**: 1.25+
 - **Nomos**: Compatible with provider-proto v1 contract
 
-[Unreleased]: https://github.com/autonomous-bits/nomos-provider-terraform-remote-state/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/autonomous-bits/nomos-provider-terraform-remote-state/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/autonomous-bits/nomos-provider-terraform-remote-state/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/autonomous-bits/nomos-provider-terraform-remote-state/compare/v0.0.1...v0.1.0
 [0.0.1]: https://github.com/autonomous-bits/nomos-provider-terraform-remote-state/releases/tag/v0.0.1
