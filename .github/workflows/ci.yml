@@ -99,12 +99,16 @@ jobs:
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
         run: |
           output="nomos-provider-terraform-remote-state-${{ matrix.goos }}-${{ matrix.goarch }}"
           if [ "${{ matrix.goos }}" = "windows" ]; then
             output="${output}.exe"
           fi
           go build -v -o "$output" ./cmd/provider
+          
+          # Verify the binary was built for the correct platform
+          file "$output" || true
 
       - name: Upload binary artifact
         uses: actions/upload-artifact@v4
