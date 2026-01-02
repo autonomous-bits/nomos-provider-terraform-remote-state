@@ -138,14 +138,21 @@ jobs:
           
           # Extract section between [VERSION] and next version or end of file
           if grep -q "\[${VERSION}\]" CHANGELOG.md; then
-            awk "/\[${VERSION}\]/,/\[.*\]/ {
-              if (/\[${VERSION}\]/) { print; next }
-              if (/\[.*\]/) { exit }
+            # Skip the version header line itself, extract content until next version
+            awk "/\[${VERSION}\]/,/^## \[/ {
+              if (/\[${VERSION}\]/) { next }
+              if (/^## \[/) { exit }
               print
             }" CHANGELOG.md > release_notes.md
             
+            # Remove leading/trailing empty lines only
+            # Remove leading empty lines
+            sed -i.bak '1{/^$/d}' release_notes.md || sed -i '' '1{/^$/d}' release_notes.md
             # Remove trailing empty lines
-            sed -i '/^$/d' release_notes.md || sed -i '' '/^$/d' release_notes.md
+            sed -i.bak -e :a -e '/^\s*$/{ $d; N; ba' -e '}' release_notes.md || \
+              sed -i '' -e :a -e '/^\s*$/{ $d; N; ba' -e '}' release_notes.md
+            
+            rm -f release_notes.md.bak
             
             echo "Found release notes for version ${VERSION}"
           else
@@ -154,6 +161,7 @@ jobs:
             echo "No changelog entry found for this version." >> release_notes.md
           fi
           
+          echo "Release notes content:"
           cat release_notes.md
 
       - name: Download all artifacts
