@@ -313,21 +313,31 @@ func (s *Service) Fetch(ctx context.Context, req *pb.FetchRequest) (resp *pb.Fet
 		return nil, status.Errorf(codes.NotFound, "output %q not found in state", outputName)
 	}
 
-	// Convert output to structpb.Struct
-	// Create a map with the output value fields
-	outputMap := map[string]interface{}{
-		"value":     output.Value,
-		"type":      output.Type,
-		"sensitive": output.Sensitive,
-	}
-
-	value, err := structpb.NewStruct(outputMap)
+	// Convert output value to protobuf Value
+	pbValue, err := structpb.NewValue(output.Value)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to convert output value: %v", err)
 	}
 
+	// protobuf Struct can only hold JSON objects (maps), not primitives or arrays directly.
+	// To return the actual value cleanly, we wrap it in a single-field struct.
+	// For objects, we return them directly.
+	// For primitives/arrays, we wrap in {"value": <actual-value>} for backwards compatibility.
+	var valueStruct *structpb.Struct
+	if s := pbValue.GetStructValue(); s != nil {
+		// Value is already an object - return it directly
+		valueStruct = s
+	} else {
+		// Value is a primitive or array - wrap in a struct
+		valueStruct = &structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"value": pbValue,
+			},
+		}
+	}
+
 	return &pb.FetchResponse{
-		Value: value,
+		Value: valueStruct,
 	}, nil
 }
 
