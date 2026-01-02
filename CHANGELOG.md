@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-01-02
+
+### Fixed
+- **Output Value Handling**: Simplified Fetch response format
+  - Provider now returns output values directly instead of wrapping in `{value, type, sensitive}` structure
+  - Object outputs returned as-is without additional wrapping
+  - Primitive and array outputs wrapped in `{value: ...}` for backwards compatibility
+  - Eliminates need for `.value` field access in complex output structures
+  - All existing tests pass with new format
+- **Release Notes**: Fixed CHANGELOG extraction pattern in release workflow
+  - Changed from generic `[VERSION]` pattern to specific `^## [VERSION]` header pattern
+  - Prevents matching version links at bottom of CHANGELOG
+  - Ensures release notes are extracted from correct section
+
 ## [0.1.1] - 2026-01-02
 
 ### Fixed
@@ -284,7 +298,8 @@ The following features are intentionally deferred to future releases:
 - **Go**: 1.25+
 - **Nomos**: Compatible with provider-proto v1 contract
 
-[Unreleased]: https://github.com/autonomous-bits/nomos-provider-terraform-remote-state/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/autonomous-bits/nomos-provider-terraform-remote-state/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/autonomous-bits/nomos-provider-terraform-remote-state/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/autonomous-bits/nomos-provider-terraform-remote-state/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/autonomous-bits/nomos-provider-terraform-remote-state/compare/v0.0.1...v0.1.0
 [0.0.1]: https://github.com/autonomous-bits/nomos-provider-terraform-remote-state/releases/tag/v0.0.1
