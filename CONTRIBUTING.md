@@ -47,7 +47,7 @@ This provider follows the autonomous-bits development standards and the Go commu
 
 ### Prerequisites
 
-- Go 1.21 or later
+- Go 1.25+ or later
 - Make
 - golangci-lint (for linting)
 - Git
@@ -81,7 +81,6 @@ This provider follows the autonomous-bits development standards and the Go commu
 ### Branch Strategy
 
 - `main`: Stable, production-ready code
-- `develop`: Integration branch for features
 - `feature/*`: Feature branches
 - `bugfix/*`: Bug fix branches
 - `hotfix/*`: Urgent production fixes
