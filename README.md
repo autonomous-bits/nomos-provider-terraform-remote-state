@@ -30,7 +30,11 @@ The Nomos Terraform Remote State Provider enables Nomos configurations to consum
 
 ## Usage
 
-### Local Backend Example
+### With Nomos CLI
+
+Declare the provider in your `.csl` file:
+
+#### Local Backend Example
 
 Create a Terraform state file:
 
@@ -70,7 +74,7 @@ app:
 
 OR
 
-### Azure Backend Example
+#### Azure Backend Example
 
 Use in Nomos configuration:
 
@@ -88,10 +92,6 @@ source:
 config MyApp {
   vpc_id = reference:tfstate:blob_url
 ```
-> [!NOTE]
-> The system uses default azure credentials. 
-
-### Install the Provider
 
 Run `nomos init` to install the provider:
 
@@ -104,6 +104,9 @@ Then build your configuration:
 ```bash
 nomos build -p ./config.csl
 ```
+
+> [!NOTE]
+> The system uses default azure credentials. 
 
 ## Configuration
 
