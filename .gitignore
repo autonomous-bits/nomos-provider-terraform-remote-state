@@ -51,3 +51,6 @@ build/
 
 # Specify AI files
 .specify/
+.github/agents/
+.github/prompts/
+specs/
