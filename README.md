@@ -2,7 +2,7 @@
 
 A Nomos provider that reads Terraform/OpenTofu remote state files and exposes outputs via the Nomos provider interface.
 
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](/LICENSE)
 [![Go Version](https://img.shields.io/badge/Go-1.25%2B-blue)](https://go.dev/)
 
 ## Overview
@@ -15,7 +15,7 @@ The Nomos Terraform Remote State Provider enables Nomos configurations to consum
 - **Workspace Support**: Access state from specific Terraform workspaces
 - **Root Module Outputs**: Read and access root module output values
 - **Type-Safe Parsing**: Strict validation of Terraform state format v4+ (Terraform 0.12+, OpenTofu 1.x+)
-- **Environment-Based Authentication**: Secure credential handling via environment variables only
+- **Authentication**: Secure credential handling
 - **No State Caching**: Fresh state retrieval on every request for guaranteed consistency
 - **gRPC Interface**: Standard Nomos provider contract with Init, Fetch, Info, Health, and Shutdown RPCs
 - **Subprocess Discovery**: TCP port discovery pattern for Nomos tooling integration
@@ -27,45 +27,6 @@ The Nomos Terraform Remote State Provider enables Nomos configurations to consum
 - **Go**: 1.25+ (for building from source)
 - **Make**: For build automation
 - **Platform**: Linux (amd64, arm64), macOS (amd64, arm64), Windows (amd64)
-
-## Installation
-
-### Building from Source
-
-```bash
-# Clone the repository
-git clone https://github.com/autonomous-bits/nomos-provider-terraform-remote-state.git
-cd nomos-provider-terraform-remote-state
-
-# Install dependencies
-make deps && make tidy
-
-# Build the provider binary
-make build
-
-# Binary will be created at: bin/nomos-provider-terraform-remote-state
-```
-
-### Install to Nomos Provider Directory
-
-```bash
-# Copy binary to Nomos provider directory (example)
-mkdir -p ~/.nomos/providers
-cp bin/nomos-provider-terraform-remote-state ~/.nomos/providers/
-
-# Make executable
-chmod +x ~/.nomos/providers/nomos-provider-terraform-remote-state
-```
-
-### Verify Installation
-
-```bash
-# Run the provider (it will start and print the port)
-./bin/nomos-provider-terraform-remote-state
-# Expected output: PROVIDER_PORT=<port>
-
-# The provider is running and ready to accept gRPC connections
-```
 
 ## Quick Start
 
@@ -94,42 +55,39 @@ Use in Nomos configuration:
 
 ```csl
 // app.csl
-source tfstate_infra = terraform-remote-state {
-  backend_type = "local"
-  path = "./terraform.tfstate"
-}
 
-config MyApp {
-  vpc_id = tfstate_infra.vpc_id.value
-}
+source:
+  alias: 'tfstate'
+  type: 'autonomous-bits/nomos-provider-terraform-remote-state'
+  version: '0.1.2'
+  backend_type: 'local'
+  path: "/storage/terraform.tfstate"
+
+app:
+  name: 'example-app'
+  url: reference:tfstate:blob_url
 ```
 
 ### 2. Azure Backend Example
-
-Set Azure credentials:
-
-```bash
-export AZURE_TENANT_ID="00000000-0000-0000-0000-000000000000"
-export AZURE_CLIENT_ID="11111111-1111-1111-1111-111111111111"
-export AZURE_CLIENT_SECRET="your-client-secret"
-```
 
 Use in Nomos configuration:
 
 ```csl
 // app.csl
-source tfstate_infra = terraform-remote-state {
-  backend_type = "azurerm"
-  storage_account_name = "mytfstate"
-  container_name = "tfstate"
-  key = "prod/terraform.tfstate"
-}
+source:
+  alias: 'tfstate'
+  type:  'autonomous-bits/nomos-provider-terraform-remote-state'
+  version: '0.1.2'
+  backend_type: 'azurerm'
+  storage_account_name: "storageaccountname"
+  container_name: "state"
+  key: "storage.tfstate"
 
 config MyApp {
-  vpc_id = tfstate_infra.vpc_id.value
-  region = tfstate_infra.region.value
-}
+  vpc_id = reference:tfstate:blob_url
 ```
+> [!NOTE]
+> The system uses default azure credentials. 
 
 ## Configuration
 
@@ -153,11 +111,6 @@ config MyApp {
 | `key` | string | Yes | Blob path/key (include workspace path if applicable) |
 
 \* The `backend_type` field is optional. If omitted, the backend type is automatically detected from configuration keys (presence of `storage_account_name` + `container_name` → azurerm backend).
-
-**Azure Authentication**: Set these environment variables:
-- `AZURE_TENANT_ID`
-- `AZURE_CLIENT_ID`
-- `AZURE_CLIENT_SECRET`
 
 ## Configuration Clarification
 
@@ -190,7 +143,7 @@ The `backend_type` field specifies **which backend implementation to use at runt
 source:
   alias: 'tfstate_infra'
   type: 'autonomous-bits/nomos-provider-terraform-remote-state'
-  version: '0.0.1'
+  version: '0.1.2'
   backend_type: 'local'           # Runtime: Use local filesystem backend
   path: "./terraform.tfstate"      # Runtime: Path to state file
 ```
@@ -200,7 +153,7 @@ source:
 source:
   alias: 'tfstate_azure'
   type: 'autonomous-bits/nomos-provider-terraform-remote-state'
-  version: '0.0.1'
+  version: '0.1.2'
   backend_type: 'azurerm'         # Runtime: Use Azure Blob Storage backend
   storage_account_name: 'mytfstate'
   container_name: 'tfstate'
@@ -388,26 +341,6 @@ ls -l ./terraform.tfstate.d/dev/terraform.tfstate
 terraform output
 ```
 
----
-
-**Issue**: `azure authentication failed`
-
-**Solution**: Ensure Azure environment variables are set:
-
-```bash
-echo $AZURE_TENANT_ID
-echo $AZURE_CLIENT_ID
-echo $AZURE_CLIENT_SECRET
-
-# Test Azure CLI authentication
-az login --service-principal \
-  --username $AZURE_CLIENT_ID \
-  --password $AZURE_CLIENT_SECRET \
-  --tenant $AZURE_TENANT_ID
-```
-
----
-
 **Issue**: `unsupported state version`
 
 **Solution**: Upgrade Terraform/OpenTofu to version 0.12+ or 1.x+ and reapply:
@@ -455,7 +388,7 @@ Current version: **0.1.0** (MVP)
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines, including:
+See [CONTRIBUTING.md](/CONTRIBUTING.md) for development guidelines, including:
 
 - Development workflow
 - Code standards
@@ -465,11 +398,11 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines, including:
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md) for version history and release notes.
+See [CHANGELOG.md](/CHANGELOG.md) for version history and release notes.
 
 ## License
 
-See [LICENSE](LICENSE) for licensing information.
+See [LICENSE](/LICENSE)) for licensing information.
 
 ## Support
 
