@@ -10,5 +10,6 @@
         ".specify/scripts/bash/": true,
         ".specify/scripts/powershell/": true
     },
+    "makefile.configureOnOpen": false,
     "github.copilot.chat.customAgents.showOrganizationAndEnterpriseAgents": true
 }
