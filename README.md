@@ -28,9 +28,13 @@ The Nomos Terraform Remote State Provider enables Nomos configurations to consum
 - **Make**: For build automation
 - **Platform**: Linux (amd64, arm64), macOS (amd64, arm64), Windows (amd64)
 
-## Quick Start
+## Usage
 
-### 1. Local Backend Example
+### With Nomos CLI
+
+Declare the provider in your `.csl` file:
+
+#### Local Backend Example
 
 Create a Terraform state file:
 
@@ -54,7 +58,7 @@ Create a Terraform state file:
 Use in Nomos configuration:
 
 ```csl
-// app.csl
+// config.csl
 
 source:
   alias: 'tfstate'
@@ -68,12 +72,14 @@ app:
   url: reference:tfstate:blob_url
 ```
 
-### 2. Azure Backend Example
+OR
+
+#### Azure Backend Example
 
 Use in Nomos configuration:
 
 ```csl
-// app.csl
+// config.csl
 source:
   alias: 'tfstate'
   type:  'autonomous-bits/nomos-provider-terraform-remote-state'
@@ -86,6 +92,19 @@ source:
 config MyApp {
   vpc_id = reference:tfstate:blob_url
 ```
+
+Run `nomos init` to install the provider:
+
+```bash
+nomos init
+```
+
+Then build your configuration:
+
+```bash
+nomos build -p ./config.csl
+```
+
 > [!NOTE]
 > The system uses default azure credentials. 
 
