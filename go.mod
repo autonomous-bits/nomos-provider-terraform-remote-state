@@ -1,11 +1,11 @@
 module github.com/autonomous-bits/nomos-provider-terraform-remote-state
 
-go 1.25.5
+go 1.26.0
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.13.1
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.6.3
-	github.com/autonomous-bits/nomos/libs/provider-proto v0.2.0
+	github.com/autonomous-bits/nomos/libs/provider-proto v0.2.2
 	google.golang.org/grpc v1.78.0
 	google.golang.org/protobuf v1.36.11
 )

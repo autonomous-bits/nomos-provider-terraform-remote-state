@@ -14,8 +14,8 @@ github.com/AzureAD/microsoft-authentication-extensions-for-go/cache v0.1.1 h1:WJ
 github.com/AzureAD/microsoft-authentication-extensions-for-go/cache v0.1.1/go.mod h1:tCcJZ0uHAmvjsVYzEFivsRTN00oz5BEsRgQHu5JZ9WE=
 github.com/AzureAD/microsoft-authentication-library-for-go v1.6.0 h1:XRzhVemXdgvJqCH0sFfrBUTnUJSBrBf7++ypk+twtRs=
 github.com/AzureAD/microsoft-authentication-library-for-go v1.6.0/go.mod h1:HKpQxkWaGLJ+D/5H8QRpyQXA1eKjxkFlOMwck5+33Jk=
-github.com/autonomous-bits/nomos/libs/provider-proto v0.2.0 h1:mad2RlBz7KrCT7aedVSaybRfGIBuoJ5f7qT2Eahngkw=
-github.com/autonomous-bits/nomos/libs/provider-proto v0.2.0/go.mod h1:h4TSiZ9R1IHokz2fWouaQ4SOOID8t8ij4zY3dEC/T8s=
+github.com/autonomous-bits/nomos/libs/provider-proto v0.2.2 h1:gOxMbvfImcMwnoTKuXWWM1V+DiEnFv6gpONDCDITWzA=
+github.com/autonomous-bits/nomos/libs/provider-proto v0.2.2/go.mod h1:H1H7K1m0XMi/B1OvWWCj7/9gblv3FPYehyTKkXNtuYI=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/go-logr/logr v1.4.3 h1:CjnDlHq8ikf6E492q6eKboGOC0T8CDaOvkHCIg8idEI=
