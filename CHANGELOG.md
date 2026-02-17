@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-02-17
+
+### Changed
+- **Dependencies**: Updated `provider-proto` library to v0.2.2
+  - Ensures compatibility with latest Nomos provider protocol features
+  - Includes bug fixes and improvements from upstream library
+
 ## [0.1.2] - 2026-01-02
 
 ### Fixed
@@ -298,7 +305,8 @@ The following features are intentionally deferred to future releases:
 - **Go**: 1.25+
 - **Nomos**: Compatible with provider-proto v1 contract
 
-[Unreleased]: https://github.com/autonomous-bits/nomos-provider-terraform-remote-state/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/autonomous-bits/nomos-provider-terraform-remote-state/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/autonomous-bits/nomos-provider-terraform-remote-state/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/autonomous-bits/nomos-provider-terraform-remote-state/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/autonomous-bits/nomos-provider-terraform-remote-state/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/autonomous-bits/nomos-provider-terraform-remote-state/compare/v0.0.1...v0.1.0
